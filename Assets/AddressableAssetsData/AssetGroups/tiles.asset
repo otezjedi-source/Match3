@@ -1,0 +1,48 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: tiles
+  m_EditorClassIdentifier: 
+  m_GroupName: tiles
+  m_GUID: a32384dba04e6475b810b955e2c88fc2
+  m_SerializeEntries:
+  - m_GUID: 17963ea44b9b24290b4da9b693b5f6a5
+    m_Address: Assets/Sprites/TileGreen.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 397dc8eb7f5604ab8a07ffdf96d22bd8
+    m_Address: Assets/Sprites/TilePurple.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: 4a49eb5e2c66842f7b8d52e8e143c2c4
+    m_Address: Assets/Sprites/TileYellow.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: a7173e2bc6b31494b8c1280e8cb8b5a9
+    m_Address: Assets/Sprites/TileBlue.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: baaebb62bb3b54ccba3dd035c87e3945
+    m_Address: Assets/Sprites/TileRed.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f11449dbd8b37497e986179f190e5b21, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: e350dc9492bf64f5cb289b204e2f9af1, type: 2}
+    - {fileID: 11400000, guid: 0fc9a2cbea07c443eaf1f4b3a9fa4681, type: 2}
