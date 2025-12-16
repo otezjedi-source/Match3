@@ -3,7 +3,7 @@ using System.Threading;
 using VContainer;
 using MiniIT.CONTROLLERS;
 using MiniIT.CORE;
-using UnityEngine.Events;
+using UniRx;
 
 namespace MiniIT.GAME
 {
@@ -15,20 +15,24 @@ namespace MiniIT.GAME
         [Inject] private readonly SoundController soundController;
         [Inject] private readonly GameConfig config;
 
-        public UnityEvent OnGameOver = null;
-        private readonly CancellationTokenSource cts = null;
+        public readonly ReactiveProperty<GameState> State = null;
+        public readonly Subject<Unit> OnGameOver = null;
 
-        public GameState State { get; private set; } = GameState.Idle;
-        public bool CanInput => State == GameState.Idle;
+        private readonly CancellationTokenSource cts = null;
+        
+        public bool CanInput => State.Value == GameState.Idle;
 
         public GameStateMachine()
         {
-            OnGameOver = new UnityEvent();
+            State = new ReactiveProperty<GameState>(GameState.Idle);
+            OnGameOver = new Subject<Unit>();
             cts = new CancellationTokenSource();
         }
 
         public void Dispose()
         {
+            State?.Dispose();
+            OnGameOver?.Dispose();
             cts?.Cancel();
             cts?.Dispose();
         }
@@ -40,13 +44,13 @@ namespace MiniIT.GAME
                 return;
             }
 
-            State = GameState.Swapping;
+            State.Value = GameState.Swapping;
 
             await gridController.SwapTilesAsync(cellA, cellB, cts.Token);
 
-            State = GameState.CheckingMatch;
-            var matches = matchController.FindMatches();
+            State.Value = GameState.CheckingMatch;
 
+            var matches = matchController.FindMatches();
             if (matches.Count > 0)
             {
                 await ProcessMatchesLoop();
@@ -54,7 +58,7 @@ namespace MiniIT.GAME
             else
             {
                 await gridController.SwapTilesAsync(cellB, cellA, cts.Token);
-                State = GameState.Idle;
+                State.Value = GameState.Idle;
             }
         }
 
@@ -62,34 +66,34 @@ namespace MiniIT.GAME
         {
             while (true)
             {
-                State = GameState.CheckingMatch;
+                State.Value = GameState.CheckingMatch;
+                
                 var matches = matchController.FindMatches();
-
                 if (matches.Count == 0)
                 {
                     if (!matchController.HasPossibleMoves())
                     {
-                        State = GameState.Idle;
-                        OnGameOver?.Invoke();
+                        State.Value = GameState.Idle;
+                        OnGameOver?.OnNext(Unit.Default);
                         break;
                     }
                     
-                    State = GameState.Idle;
+                    State.Value = GameState.Idle;
                     break;
                 }
                 
                 await UniTask.Delay((int)(config.MatchDelay * 1000), cancellationToken: cts.Token);
 
-                State = GameState.Destroying;
+                State.Value = GameState.Destroying;
                 soundController.PlayMatch();
                 await matchController.DestroyMatchesAsync(matches);
                 scoreController.AddScore(matches.Count * 10);
 
-                State = GameState.Falling;
+                State.Value = GameState.Falling;
                 soundController.PlayDrop();
                 await gridController.FallTilesAsync(cts.Token);
 
-                State = GameState.Filling;
+                State.Value = GameState.Filling;
                 soundController.PlayDrop();
                 await gridController.FillEmptyCellsAsync(cts.Token);
             }

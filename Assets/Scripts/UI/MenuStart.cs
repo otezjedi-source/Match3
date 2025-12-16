@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using MiniIT.CONTROLLERS;
 using TMPro;
+using UniRx;
 using UnityEditor;
 using UnityEngine;
 using UnityEngine.UI;
@@ -25,13 +26,7 @@ namespace MiniIT.UI
             btnResetHighScore.onClick.AddListener(OnBtnResetHighScoreClick);
             btnQuit.onClick.AddListener(OnBtnQuitClick);
 
-            scoreController.OnHighScoreChanged.AddListener(OnHighScoreChanged);
-            OnHighScoreChanged(scoreController.HighScore);
-        }
-
-        void OnDestroy()
-        {
-            scoreController.OnHighScoreChanged.RemoveListener(OnHighScoreChanged);
+            scoreController.HighScore.Subscribe(score => OnHighScoreChanged(score));
         }
 
         private void OnHighScoreChanged(int newScore)

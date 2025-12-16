@@ -7,3 +7,5 @@ Logs
 *.slnx
 Temp
 UserSettings
+Assets/Plugins/UniRx/Examples
+Examples.meta

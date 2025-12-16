@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using MiniIT.CONTROLLERS;
 using TMPro;
+using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -13,14 +14,17 @@ namespace MiniIT.UI
         [SerializeField] private Button btnBack;
 
         [Inject] private readonly SceneLoader sceneLoader;
+        [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly SoundController soundController;
 
         public void Start()
         {
             btnBack.onClick.AddListener(OnBtnBackClick);
+
+            scoreController.Score.Subscribe(score => UpdateScore(score));
         }
 
-        public void UpdateScore(int newScore)
+        private void UpdateScore(int newScore)
         {
             score.text = $"Score: {newScore}";
         }

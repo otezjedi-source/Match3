@@ -1,5 +1,6 @@
 using MiniIT.CONTROLLERS;
 using MiniIT.GAME;
+using UniRx;
 using UnityEngine;
 using VContainer;
 
@@ -16,16 +17,9 @@ namespace MiniIT.UI
 
         private void Start()
         {
-            scoreController.OnScoreChanged.AddListener(menuGame.UpdateScore);
-            stateMachine.OnGameOver.AddListener(ShowGameOverMenu);
+            stateMachine.OnGameOver.Subscribe(_ => ShowGameOverMenu());
 
             ShowGameMenu();
-        }
-
-        private void OnDestroy()
-        {
-            scoreController.OnScoreChanged.RemoveListener(menuGame.UpdateScore);
-            stateMachine.OnGameOver.RemoveListener(ShowGameOverMenu);
         }
 
         public void ShowGameMenu()

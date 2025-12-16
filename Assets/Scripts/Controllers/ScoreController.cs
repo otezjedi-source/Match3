@@ -1,78 +1,58 @@
 using System;
 using Cysharp.Threading.Tasks;
 using MiniIT.SAVE;
+using UniRx;
 using UnityEngine;
-using UnityEngine.Events;
 using VContainer;
 
 namespace MiniIT.CONTROLLERS
 {
-    public class ScoreController
+    public class ScoreController : IDisposable
     {
         [Inject] private readonly ISaveController saveController;
 
+        public readonly ReactiveProperty<int> Score = null;
+        public readonly ReactiveProperty<int> HighScore = null;
+
+        private readonly CompositeDisposable disposables = null;
         private SaveData saveData;
-
-        private int score;
-        public int Score
-        {
-            get => score;
-            private set
-            {
-                score = value;
-                OnScoreChanged?.Invoke(score);
-
-                if (score > highScore)
-                {
-                    SetHighScore(score);
-                    IsNewHighScore = true;
-                }
-            }
-        }
-
-        private int highScore;
-        public int HighScore
-        {
-            get => highScore;
-            private set
-            {
-                highScore = value;
-                OnHighScoreChanged?.Invoke(highScore);
-            }
-        }
 
         public bool IsNewHighScore { get; private set; } = false;
 
-        public UnityEvent<int> OnScoreChanged = null;
-        public UnityEvent<int> OnHighScoreChanged = null;
-
         private ScoreController()
         {
-            OnScoreChanged = new UnityEvent<int>();
-            OnHighScoreChanged = new UnityEvent<int>();
+            Score = new ReactiveProperty<int>(0);
+            HighScore = new ReactiveProperty<int>(0);
+            disposables = new CompositeDisposable();
+
+            Score
+                .Where(score => score > HighScore.Value)
+                .Subscribe(score => SetHighScore(score))
+                .AddTo(disposables);
         }
 
         public async UniTask InitAsync()
         {
             saveData = await saveController.LoadAsync();
-            HighScore = saveData.HighScore;
+            HighScore.Value = saveData.HighScore;
         }
 
         public void AddScore(int points)
         {
-            Score += points;
+            Score.Value += points;
         }
 
         public void ResetScore()
         {
-            Score = 0;
+            Score.Value = 0;
             IsNewHighScore = false;
         }
 
         private void SetHighScore(int newHighScore)
         {
-            HighScore = newHighScore;
+            HighScore.Value = newHighScore;
             saveData.HighScore = newHighScore;
+            IsNewHighScore = true;
             SaveAsync().Forget();
         }
 
@@ -91,6 +71,13 @@ namespace MiniIT.CONTROLLERS
             {
                 Debug.LogError($"Failed to save: {ex.Message}");
             }
+        }
+
+        public void Dispose()
+        {
+            disposables?.Dispose();
+            Score?.Dispose();
+            HighScore?.Dispose();
         }
     }
 }
