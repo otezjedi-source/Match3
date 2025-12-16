@@ -17,7 +17,9 @@ namespace MiniIT.UI
 
         private void Start()
         {
-            stateMachine.OnGameOver.Subscribe(_ => ShowGameOverMenu());
+            stateMachine.OnGameOver
+                .Subscribe(_ => ShowGameOverMenu())
+                .AddTo(this);
 
             ShowGameMenu();
         }

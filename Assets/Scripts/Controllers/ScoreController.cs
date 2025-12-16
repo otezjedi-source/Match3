@@ -19,7 +19,7 @@ namespace MiniIT.CONTROLLERS
 
         public bool IsNewHighScore { get; private set; } = false;
 
-        private ScoreController()
+        public ScoreController()
         {
             Score = new ReactiveProperty<int>(0);
             HighScore = new ReactiveProperty<int>(0);

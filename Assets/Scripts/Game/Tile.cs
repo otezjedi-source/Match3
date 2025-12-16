@@ -43,21 +43,9 @@ namespace MiniIT.GAME
 
         public async UniTask MoveToAsync(Vector3 targetPosition, float duration, CancellationToken ct = default)
         {
-            var startPosition = transform.position;
-            var elapsed = 0f;
-
-            while (elapsed < duration)
-            {
-                if (ct.IsCancellationRequested)
-                    return;
-
-                elapsed += Time.deltaTime;
-                var t = elapsed / duration;
-                transform.position = Vector3.Lerp(startPosition, targetPosition, t);
-                await UniTask.Yield(ct);
-            }
-
-            transform.position = targetPosition;
+            await transform.DOMove(targetPosition, duration)
+                .SetEase(Ease.Linear)
+                .ToUniTask(cancellationToken: ct);
         }
 
         public async UniTask ClearAnimationAsync(CancellationToken ct = default)
@@ -84,22 +72,25 @@ namespace MiniIT.GAME
         {
             var tcs = new UniTaskCompletionSource();
             var entry = skeletonAnimation.AnimationState.GetCurrent(0);
-            entry.Complete += OnComplete;
-
-            if (ct != default)
+            
+            if (entry == null)
             {
-                ct.Register(() =>
-                {
-                    entry.Complete -= OnComplete;
-                    tcs.TrySetCanceled();
-                });
+                return;
             }
 
-            await tcs.Task;
+            entry.Complete += OnComplete;
+
+            try
+            {
+                await tcs.Task.AttachExternalCancellation(ct);
+            }
+            finally
+            {
+                entry.Complete -= OnComplete;
+            }
 
             void OnComplete(TrackEntry e)
             {
-                e.Complete -= OnComplete;
                 tcs.TrySetResult();
             }
         }

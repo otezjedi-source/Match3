@@ -181,7 +181,7 @@ namespace MiniIT.CONTROLLERS
             }
 
             await tile.ClearAnimationAsync();
-            Object.Destroy(tile.gameObject);
+            tileFactory.Return(tile);
         }
         #endregion
 

@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using MiniIT.CONTROLLERS;
 using TMPro;
+using UniRx;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -22,13 +23,18 @@ namespace MiniIT.UI
 
         public void Start()
         {
-            btnBack.onClick.AddListener(OnBtnBackClick);
-            btnRestart.onClick.AddListener(OnBtnRestartClick);
+            btnBack.OnClickAsObservable()
+                .Subscribe(_ => OnBtnBackClick())
+                .AddTo(this);
+
+            btnRestart.OnClickAsObservable()
+                .Subscribe(_ => OnBtnRestartClick())
+                .AddTo(this);
         }
 
         private void OnEnable()
         {
-            score.text = $"Final Score: {scoreController.Score}";
+            score.text = $"Final Score: {scoreController.Score.Value}";
             newHighScore.SetActive(scoreController.IsNewHighScore);
         }
 

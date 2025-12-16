@@ -12,15 +12,21 @@ namespace MiniIT.CONTROLLERS
         [Inject] private readonly GameConfig config;
         [Inject] private readonly GridController gridController;
 
+        private readonly HashSet<Tile> matchesCache = new HashSet<Tile>();
+        private readonly List<Tile> matchesList = new List<Tile>();
+        private bool? hasPossibleMoves = null;
+
         #region Public methods
         public List<Tile> FindMatches()
         {
-            var matches = new HashSet<Tile>();
+            matchesCache.Clear();
+            matchesList.Clear();
 
-            CheckHorizontalMatches(matches);
-            CheckVerticalMatches(matches);
+            CheckHorizontalMatches(matchesCache);
+            CheckVerticalMatches(matchesCache);
 
-            return new List<Tile>(matches);
+            matchesList.AddRange(matchesCache);
+            return matchesList;
         }
 
         public async UniTask DestroyMatchesAsync(List<Tile> matches)
@@ -30,6 +36,13 @@ namespace MiniIT.CONTROLLERS
         }
 
         public bool HasPossibleMoves()
+        {
+            if (!hasPossibleMoves.HasValue)
+                hasPossibleMoves = CheckHasPossibleMoves();
+            return hasPossibleMoves.Value;
+        }
+
+        private bool CheckHasPossibleMoves()
         {
             for (int x = 0; x < config.GridWidth; x++)
             {
@@ -70,6 +83,11 @@ namespace MiniIT.CONTROLLERS
             }
 
             return false;
+        }
+
+        public void InvalidateHasPossibleMoves()
+        {
+            hasPossibleMoves = null;
         }
         #endregion
 

@@ -3,12 +3,11 @@ using UnityEngine.UI;
 
 namespace MiniIT.UTILS
 {
-
     [ExecuteInEditMode]
     [RequireComponent(typeof(Camera))]
     public class AdjustCamera : MonoBehaviour
     {
-        [SerializeField] private float desiredSize = 0;
+        [SerializeField] private float targetSize = 0;
         [SerializeField] private CanvasScaler canvas = null;
 
         private Camera cam = null;
@@ -18,9 +17,21 @@ namespace MiniIT.UTILS
             cam = GetComponent<Camera>();
         }
 
-        private void OnGUI()
+        private void Start()
         {
-            if (cam.aspect == 0 || canvas.referenceResolution.y == 0)
+            AdjustCameraSize();
+        }
+
+#if UNITY_EDITOR
+    private void OnGUI()
+        {
+            AdjustCameraSize();
+        }
+#endif
+
+        private void AdjustCameraSize()
+        {
+            if (cam.aspect == 0 || canvas == null || canvas.referenceResolution.y == 0)
             {
                 return;
             }
@@ -28,11 +39,11 @@ namespace MiniIT.UTILS
             float referenceAspect = canvas.referenceResolution.x / canvas.referenceResolution.y;
             if (cam.aspect < referenceAspect)
             {
-                cam.orthographicSize = desiredSize * referenceAspect / cam.aspect;
+                cam.orthographicSize = targetSize * referenceAspect / cam.aspect;
             }
             else
             {
-                cam.orthographicSize = desiredSize;
+                cam.orthographicSize = targetSize;
             }
 
             canvas.matchWidthOrHeight = Camera.main.aspect < referenceAspect ? 0 : 1;

@@ -22,11 +22,21 @@ namespace MiniIT.UI
 
         private void Start()
         {
-            btnStart.onClick.AddListener(OnBtnStartClicked);
-            btnResetHighScore.onClick.AddListener(OnBtnResetHighScoreClick);
-            btnQuit.onClick.AddListener(OnBtnQuitClick);
+            btnStart.OnClickAsObservable()
+                .Subscribe(_ => OnBtnStartClicked())
+                .AddTo(this);
 
-            scoreController.HighScore.Subscribe(score => OnHighScoreChanged(score));
+            btnResetHighScore.OnClickAsObservable()
+                .Subscribe(_ => OnBtnResetHighScoreClick())
+                .AddTo(this);
+
+            btnQuit.OnClickAsObservable()
+                .Subscribe(_ => OnBtnQuitClick())
+                .AddTo(this);
+
+            scoreController.HighScore
+                .Subscribe(score => OnHighScoreChanged(score))
+                .AddTo(this);
         }
 
         private void OnHighScoreChanged(int newScore)

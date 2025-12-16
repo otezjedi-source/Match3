@@ -19,9 +19,13 @@ namespace MiniIT.UI
 
         public void Start()
         {
-            btnBack.onClick.AddListener(OnBtnBackClick);
+            btnBack.OnClickAsObservable()
+                .Subscribe(_ => OnBtnBackClick())
+                .AddTo(this);
 
-            scoreController.Score.Subscribe(score => UpdateScore(score));
+            scoreController.Score
+                .Subscribe(score => UpdateScore(score))
+                .AddTo(this);
         }
 
         private void UpdateScore(int newScore)

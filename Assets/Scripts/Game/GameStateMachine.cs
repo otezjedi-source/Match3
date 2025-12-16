@@ -86,16 +86,18 @@ namespace MiniIT.GAME
 
                 State.Value = GameState.Destroying;
                 soundController.PlayMatch();
+                
                 await matchController.DestroyMatchesAsync(matches);
                 scoreController.AddScore(matches.Count * 10);
 
                 State.Value = GameState.Falling;
-                soundController.PlayDrop();
                 await gridController.FallTilesAsync(cts.Token);
 
                 State.Value = GameState.Filling;
-                soundController.PlayDrop();
                 await gridController.FillEmptyCellsAsync(cts.Token);
+                matchController.InvalidateHasPossibleMoves();
+
+                soundController.PlayDrop();
             }
         }
     }
