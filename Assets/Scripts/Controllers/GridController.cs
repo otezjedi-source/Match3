@@ -17,6 +17,7 @@ namespace MiniIT.CONTROLLERS
         [Inject] private readonly GameConfig config;
         [Inject] private readonly CellFactory cellFactory;
         [Inject] private readonly TileFactory tileFactory;
+        [Inject] private readonly SoundController soundController;
 
         private Cell[,] cells = null;
 
@@ -270,6 +271,7 @@ namespace MiniIT.CONTROLLERS
         private async UniTask AnimateTilesFall(List<Tile> tiles, CancellationToken ct)
         {
             await UniTask.WhenAll(tiles.Select(t => t.MoveToAsync(t.Cell.transform.position, config.FallDuration, ct)));
+            soundController.PlayDrop();
             await UniTask.WhenAll(tiles.Select(t => t.DropAnimationAsync()));
         }
         #endregion   

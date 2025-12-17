@@ -96,8 +96,6 @@ namespace MiniIT.GAME
                 State.Value = GameState.Filling;
                 await gridController.FillEmptyCellsAsync(cts.Token);
                 matchController.InvalidateHasPossibleMoves();
-
-                soundController.PlayDrop();
             }
         }
     }

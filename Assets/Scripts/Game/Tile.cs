@@ -23,6 +23,9 @@ namespace MiniIT.GAME
 
         public void Init(GameConfig.TileData tileData)
         {
+            sprite.gameObject.SetActive(false);
+            clearAnimation.gameObject.SetActive(false);
+
             Type = tileData.type;
             clearAnimation.skeletonDataAsset = tileData.clearAnim;
 
@@ -30,6 +33,7 @@ namespace MiniIT.GAME
             spriteHandle.Completed += handle =>
             {
                 sprite.sprite = handle.Result;
+                sprite.gameObject.SetActive(true);
             };
         }
 
