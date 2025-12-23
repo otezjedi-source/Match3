@@ -2,6 +2,7 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using MiniIT.CORE;
+using MiniIT.ECS;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
@@ -17,6 +18,7 @@ namespace MiniIT.GAME
 
         public TileType Type { get; private set; }
         public Cell Cell { get; set; }
+        public Entity Entity { get; set; }
         public Vector2Int Position => Cell != null ? Cell.Position : Vector2Int.zero;
 
         private AsyncOperationHandle<Sprite> spriteHandle;

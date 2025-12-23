@@ -1,5 +1,6 @@
 using System;
-using MiniIT.CONTROLLERS;
+using MiniIT.ECS;
+using MiniIT.ECS.Systems;
 using MiniIT.GAME;
 using VContainer;
 using VContainer.Unity;
@@ -8,24 +9,27 @@ namespace MiniIT.CORE
 {
     public class GameInitializer : IStartable, ITickable, IDisposable
     {
-        [Inject] private readonly GridController gridController;
-        [Inject] private readonly InputController inputController;
-        [Inject] private readonly GameStateMachine stateMachine;
+        [Inject] private readonly EcsWorld _world;
+        [Inject] private readonly GridInitializationSystem _gridSystem;
+        [Inject] private readonly InputSystem _inputSystem;
+        [Inject] private readonly GameStateMachine _stateMachine;
 
         public void Start()
         {
-            gridController.Init();
-            inputController.Init();
+            _gridSystem.Initialize();
+            _inputSystem.Init();
         }
 
         public void Tick()
         {
-            inputController.Update();
+            _inputSystem.Update();
         }
 
         public void Dispose()
         {
-            stateMachine.Dispose();
+            _gridSystem.Cleanup();
+            _world.Clear();
+            _stateMachine.Dispose();
         }
     }
 }

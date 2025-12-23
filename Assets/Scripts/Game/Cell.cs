@@ -1,3 +1,4 @@
+using MiniIT.ECS;
 using UnityEngine;
 
 namespace MiniIT.GAME
@@ -6,6 +7,7 @@ namespace MiniIT.GAME
     {
         public Vector2Int Position { get; private set; }
         public Tile Tile { get; set; }
+        public Entity Entity { get; set; }
 
         public void Init(Vector2Int position)
         {

@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using MiniIT.CONTROLLERS;
+using MiniIT.ECS.Systems;
 using TMPro;
 using UniRx;
 using UnityEngine;
@@ -17,7 +18,8 @@ namespace MiniIT.UI
 
         [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly SceneLoader sceneLoader;
-        [Inject] private readonly GridController gridController;
+        [Inject] private readonly GridInitializationSystem gridSystem;
+        [Inject] private readonly MatchDetectionSystem matchSystem;
         [Inject] private readonly SoundController soundController;
         [Inject] private readonly GameUI gameUI;
 
@@ -47,7 +49,9 @@ namespace MiniIT.UI
         private void OnBtnRestartClick()
         {
             soundController.PlayBtnClick();
-            gridController.ResetTiles();
+            gridSystem.ResetTiles();
+            matchSystem.InvalidateHasPossibleMoves();
+            scoreController.ResetScore();
             gameUI.ShowGameMenu();
         }
     }
