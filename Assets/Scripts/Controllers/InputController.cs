@@ -1,10 +1,10 @@
 using Cysharp.Threading.Tasks;
-using MiniIT.CORE;
-using MiniIT.GAME;
+using Match3.Core;
+using Match3.Game;
 using UnityEngine;
 using VContainer;
 
-namespace MiniIT.CONTROLLERS
+namespace Match3.Controllers
 {
     public class InputController
     {

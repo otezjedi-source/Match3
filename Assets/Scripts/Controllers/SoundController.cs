@@ -1,8 +1,8 @@
-using MiniIT.CORE;
+using Match3.Core;
 using UnityEngine;
 using VContainer;
 
-namespace MiniIT.CONTROLLERS
+namespace Match3.Controllers
 {
     public class SoundController
     {

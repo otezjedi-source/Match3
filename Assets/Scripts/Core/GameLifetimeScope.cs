@@ -1,12 +1,12 @@
-using MiniIT.CONTROLLERS;
-using MiniIT.FACTORIES;
-using MiniIT.GAME;
-using MiniIT.UI;
+using Match3.Controllers;
+using Match3.Factories;
+using Match3.Game;
+using Match3.UI;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
-namespace MiniIT.CORE
+namespace Match3.Core
 {
     public class GameLifetimeScope : LifetimeScope {
         [SerializeField] private Transform gridParent;

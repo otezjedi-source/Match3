@@ -1,11 +1,11 @@
 using Cysharp.Threading.Tasks;
 using System.Threading;
 using VContainer;
-using MiniIT.CONTROLLERS;
-using MiniIT.CORE;
+using Match3.Controllers;
+using Match3.Core;
 using UniRx;
 
-namespace MiniIT.GAME
+namespace Match3.Game
 {
     public class GameStateMachine
     {

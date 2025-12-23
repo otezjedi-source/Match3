@@ -1,6 +1,6 @@
 using UnityEngine;
 
-namespace MiniIT.GAME
+namespace Match3.Game
 {
     public class Cell : MonoBehaviour
     {

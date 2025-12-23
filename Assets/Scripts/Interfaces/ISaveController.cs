@@ -1,6 +1,6 @@
 using Cysharp.Threading.Tasks;
 
-namespace MiniIT.SAVE
+namespace Match3.Save
 {
     public interface ISaveController
     {

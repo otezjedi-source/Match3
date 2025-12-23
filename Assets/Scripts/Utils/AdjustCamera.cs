@@ -1,7 +1,7 @@
 ﻿using UnityEngine;
 using UnityEngine.UI;
 
-namespace MiniIT.UTILS
+namespace Match3.Utils
 {
     [ExecuteInEditMode]
     [RequireComponent(typeof(Camera))]

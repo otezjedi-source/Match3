@@ -1,10 +1,10 @@
 using System.Collections.Generic;
-using MiniIT.CORE;
-using MiniIT.GAME;
+using Match3.Core;
+using Match3.Game;
 using UnityEngine;
 using VContainer;
 
-namespace MiniIT.FACTORIES
+namespace Match3.Factories
 {
     public class TileFactory
     {

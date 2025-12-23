@@ -2,15 +2,15 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
-using MiniIT.CORE;
-using MiniIT.FACTORIES;
-using MiniIT.GAME;
+using Match3.Core;
+using Match3.Factories;
+using Match3.Game;
 using UnityEngine;
 using VContainer;
 using Object = UnityEngine.Object;
 using Random = UnityEngine.Random;
 
-namespace MiniIT.CONTROLLERS
+namespace Match3.Controllers
 {
     public class GridController
     {

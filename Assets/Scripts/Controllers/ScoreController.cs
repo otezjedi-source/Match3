@@ -1,11 +1,11 @@
 using System;
 using Cysharp.Threading.Tasks;
-using MiniIT.SAVE;
+using Match3.Save;
 using UniRx;
 using UnityEngine;
 using VContainer;
 
-namespace MiniIT.CONTROLLERS
+namespace Match3.Controllers
 {
     public class ScoreController : IDisposable
     {

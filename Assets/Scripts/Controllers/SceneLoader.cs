@@ -4,7 +4,7 @@ using UnityEngine.SceneManagement;
 using VContainer;
 using VContainer.Unity;
 
-namespace MiniIT.CONTROLLERS
+namespace Match3.Controllers
 {
     public class SceneLoader
     {

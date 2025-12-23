@@ -1,5 +1,5 @@
 using Cysharp.Threading.Tasks;
-using MiniIT.CONTROLLERS;
+using Match3.Controllers;
 using TMPro;
 using UniRx;
 using UnityEditor;
@@ -7,7 +7,7 @@ using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
 
-namespace MiniIT.UI
+namespace Match3.UI
 {
     public class MenuStart : MonoBehaviour
     {

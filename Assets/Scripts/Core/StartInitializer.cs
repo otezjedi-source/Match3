@@ -1,9 +1,9 @@
 using Cysharp.Threading.Tasks;
-using MiniIT.CONTROLLERS;
+using Match3.Controllers;
 using VContainer;
 using VContainer.Unity;
 
-namespace MiniIT.CORE
+namespace Match3.Core
 {
     public class StartInitializer : IStartable
     {

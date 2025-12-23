@@ -1,11 +1,11 @@
 using System;
 using System.Collections.Generic;
-using MiniIT.GAME;
+using Match3.Game;
 using Spine.Unity;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
-namespace MiniIT.CORE
+namespace Match3.Core
 {
     [CreateAssetMenu(fileName = "GameConfig", menuName = "Match3/GameConfig")]
     public class GameConfig : ScriptableObject

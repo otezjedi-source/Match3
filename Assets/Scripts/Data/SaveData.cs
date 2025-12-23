@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace MiniIT.SAVE
+namespace Match3.Save
 {
     public class SaveData
     {

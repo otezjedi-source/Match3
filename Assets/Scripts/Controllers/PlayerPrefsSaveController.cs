@@ -1,7 +1,7 @@
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 
-namespace MiniIT.SAVE
+namespace Match3.Save
 {
     public class PlayerPrefsSaveController : ISaveController
     {

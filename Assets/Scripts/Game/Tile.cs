@@ -1,14 +1,14 @@
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
-using MiniIT.CORE;
+using Match3.Core;
 using Spine;
 using Spine.Unity;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
-namespace MiniIT.GAME
+namespace Match3.Game
 {
     public class Tile : MonoBehaviour
     {

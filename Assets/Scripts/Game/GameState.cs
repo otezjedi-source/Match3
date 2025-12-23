@@ -1,4 +1,4 @@
-namespace MiniIT.GAME
+namespace Match3.Game
 {
     public enum GameState
     {

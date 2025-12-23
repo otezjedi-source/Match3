@@ -1,10 +1,10 @@
 using System;
-using MiniIT.CONTROLLERS;
-using MiniIT.GAME;
+using Match3.Controllers;
+using Match3.Game;
 using VContainer;
 using VContainer.Unity;
 
-namespace MiniIT.CORE
+namespace Match3.Core
 {
     public class GameInitializer : IStartable, ITickable, IDisposable
     {

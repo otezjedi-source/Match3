@@ -1,9 +1,9 @@
-using MiniIT.GAME;
-using MiniIT.UI;
+using Match3.Game;
+using Match3.UI;
 using VContainer;
 using VContainer.Unity;
 
-namespace MiniIT.CORE
+namespace Match3.Core
 {
     public class StartLifetimeScope : LifetimeScope {
         protected override void Configure(IContainerBuilder builder) {

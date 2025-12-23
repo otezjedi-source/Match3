@@ -1,11 +1,11 @@
 using Cysharp.Threading.Tasks;
-using MiniIT.CONTROLLERS;
-using MiniIT.SAVE;
+using Match3.Controllers;
+using Match3.Save;
 using UnityEngine;
 using VContainer;
 using VContainer.Unity;
 
-namespace MiniIT.CORE
+namespace Match3.Core
 {
     public class BootLifetimeScope : LifetimeScope {
         [SerializeField] private GameConfig gameConfig;

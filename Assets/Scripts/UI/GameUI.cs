@@ -1,10 +1,10 @@
-using MiniIT.CONTROLLERS;
-using MiniIT.GAME;
+using Match3.Controllers;
+using Match3.Game;
 using UniRx;
 using UnityEngine;
 using VContainer;
 
-namespace MiniIT.UI
+namespace Match3.UI
 {
     public class GameUI : MonoBehaviour
     {
