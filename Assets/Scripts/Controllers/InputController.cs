@@ -65,7 +65,7 @@ namespace Match3.Controllers
         private void HandleDrag()
         {
             float3 currentWorldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-            float dragDistance = Vector3.Distance(dragStartWorldPosition, currentWorldPos);
+            float dragDistance = math.distance(dragStartWorldPosition, currentWorldPos);
 
             if (dragDistance >= config.MinDragDistance)
             {
@@ -84,12 +84,12 @@ namespace Match3.Controllers
             isDragging = false;
         }
 
-        private int2 GetTargetFromDirection(Vector3 direction)
+        private int2 GetTargetFromDirection(float3 direction)
         {
             int targetX = dragStartPos.x;
             int targetY = dragStartPos.y;
 
-            if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
+            if (math.abs(direction.x) > math.abs(direction.y))
                 targetX += direction.x > 0 ? 1 : -1;
             else
                 targetY += direction.y > 0 ? 1 : -1;

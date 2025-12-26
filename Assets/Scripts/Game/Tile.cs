@@ -33,12 +33,15 @@ namespace Match3.Game
             };
         }
 
-        private void OnDestroy()
+        public void Clear()
         {
             if (spriteHandle.IsValid())
-            {
                 Addressables.Release(spriteHandle);
-            }
+        }
+
+        private void OnDestroy()
+        {
+            Clear();
         }
 
         public async UniTask MoveToAsync(float3 targetPosition, float duration, CancellationToken ct = default)
@@ -74,9 +77,7 @@ namespace Match3.Game
             var entry = skeletonAnimation.AnimationState.GetCurrent(0);
             
             if (entry == null)
-            {
                 return;
-            }
 
             entry.Complete += OnComplete;
 

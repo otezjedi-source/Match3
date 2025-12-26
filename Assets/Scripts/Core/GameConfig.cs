@@ -10,13 +10,27 @@ namespace Match3.Core
     [CreateAssetMenu(fileName = "GameConfig", menuName = "Match3/GameConfig")]
     public class GameConfig : ScriptableObject
     {
+        [Header("Grid Settings")]
         public int GridWidth = 5;
         public int GridHeight = 9;
+
+        [Header("Game Settings")]
         public int MatchCount = 3;
+        public int ScoreForTile = 10;
+
+        [Header("Timings")]
         public float SwapDuration = 0.3f;
         public float FallDuration = 0.3f;
         public float MinDragDistance = 0.5f;
         public float MatchDelay = 0.2f;
+
+        [Header("Tiles Data")]
+        public List<TileData> TilesData;
+
+        [Header("Sounds")]
+        public AudioClip ButtonClickSound;
+        public AudioClip MatchSound;
+        public AudioClip DropSound;
 
         [Serializable]
         public class TileData
@@ -25,11 +39,5 @@ namespace Match3.Core
             public AssetReference spriteRef;
             public SkeletonDataAsset clearAnim;
         }
-
-        public List<TileData> TilesData;
-
-        public AudioClip ButtonClickSound;
-        public AudioClip MatchSound;
-        public AudioClip DropSound;
     }
 }

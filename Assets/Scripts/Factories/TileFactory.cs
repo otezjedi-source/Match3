@@ -51,6 +51,7 @@ namespace Match3.Factories
             if (!views.TryGetValue(entity, out var view))
                 return;
 
+            view.Clear();
             view.gameObject.SetActive(false);
             pool.Enqueue(entity);
         }

@@ -75,7 +75,7 @@ namespace Match3.Game
                 soundController.PlayMatch();
                 
                 await gridController.RemoveTilesAsync(matches);
-                scoreController.AddScore(matches.Count * 10);
+                scoreController.AddScore(matches.Count * config.ScoreForTile);
 
                 state = State.Falling;
                 await gridController.FallTilesAsync(ct);

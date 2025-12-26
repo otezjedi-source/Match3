@@ -213,46 +213,41 @@ namespace Match3.Controllers
         public async UniTask FillEmptyCellsAsync(CancellationToken ct = default)
         {
             var grid = entityManager.GetBuffer<GridCell>(gridEntity);
-            var newTiles = new List<(Tile, float3)>();
+            var newTiles = new List<(Entity entity, Tile view, int2 pos)>();
+
+            var types = new List<TileType>(config.TilesData.Count);
+            foreach (var data in config.TilesData)
+                types.Add(data.type);
 
             for (int x = 0; x < config.GridWidth; x++)
-                FillColumn(x, newTiles);
-
-            if (newTiles.Count > 0)
-                await AnimateTilesFall(newTiles, ct);
-
-            void FillColumn(int x, List<(Tile, float3)> tiles)
             {
-                var types = new List<TileType>(config.TilesData.Count);
-                foreach (var data in config.TilesData)
-                    types.Add(data.type);
-
-                int emptyCount = CountEmptyInColumn(x);
-
-                for (int i = 0; i < emptyCount; i++)
-                {
-                    int targetY = config.GridHeight - emptyCount + i;
-                    int idx = Idx(x, targetY);
-
-                    int rnd = Random.Range(0, types.Count);
-                    var tile = tileFactory.Create(x, config.GridHeight + i, types[rnd]);
-                    grid[idx] = new GridCell { Tile = tile };
-
-                    var view = tileFactory.GetView(tile);
-                    tiles.Add((view, new(x, targetY, 0)));
-                }
-            }
-
-            int CountEmptyInColumn(int x)
-            {
-                int count = 0;
+                int yOffset = 0;
                 for (int y = 0; y < config.GridHeight; y++)
                 {
-                    if (grid[Idx(x, y)].Tile == Entity.Null)
-                        count++;
+                    if (grid[Idx(x, y)].Tile != Entity.Null)
+                        continue;
+
+                    int rnd = Random.Range(0, types.Count);
+                    var entity = tileFactory.Create(x, config.GridHeight + yOffset, types[rnd]);
+                    var view = tileFactory.GetView(entity);
+                    newTiles.Add((entity, view, new(x, y)));
+                    ++yOffset;
                 }
-                return count;
             }
+
+            grid = entityManager.GetBuffer<GridCell>(gridEntity);
+            foreach (var (entity, _, pos) in newTiles)
+            {
+                int idx = Idx(pos.x, pos.y);
+                grid[idx] = new GridCell { Tile = entity };
+            }
+
+            var moveViews = new List<(Tile tile, float3 pos)>();
+            foreach (var (_, view, pos) in newTiles)
+                moveViews.Add((view, new(pos.x, pos.y, 0)));
+
+            if (moveViews.Count > 0)
+                await AnimateTilesFall(moveViews, ct);
         }
         #endregion
 
