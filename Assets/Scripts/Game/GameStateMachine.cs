@@ -28,14 +28,15 @@ namespace Match3.Game
         [Inject] private readonly SoundController soundController;
         [Inject] private readonly GameConfig config;
 
-        public readonly Subject<Unit> OnGameOver = new();
+        private readonly Subject<Unit> onGameOver = new();
+        public IObservable<Unit> OnGameOver => onGameOver;
 
         private State state = State.Idle;        
         public bool CanInput => state == State.Idle;
 
         public void Dispose()
         {
-            OnGameOver?.Dispose();
+            onGameOver?.Dispose();
         }
 
         public async UniTask ProcessSwapAsync(int2 posA, int2 posB, CancellationToken ct = default)
@@ -62,7 +63,7 @@ namespace Match3.Game
             state = State.Idle;
 
             if (!matchController.HasPossibleMoves())    
-                OnGameOver?.OnNext(Unit.Default);
+                onGameOver?.OnNext(Unit.Default);
         }
 
         private async UniTask ProcessMatchesLoop(List<int2> matches, CancellationToken ct = default)

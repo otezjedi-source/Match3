@@ -11,20 +11,16 @@ namespace Match3.Controllers
     {
         [Inject] private readonly ISaveController saveController;
 
-        public readonly ReactiveProperty<int> Score = null;
-        public readonly ReactiveProperty<int> HighScore = null;
+        public readonly ReactiveProperty<int> Score = new(0);
+        public readonly ReactiveProperty<int> HighScore = new(0);
 
-        private readonly CompositeDisposable disposables = null;
+        private readonly CompositeDisposable disposables = new();
         private SaveData saveData;
 
         public bool IsNewHighScore { get; private set; } = false;
 
         public ScoreController()
         {
-            Score = new ReactiveProperty<int>(0);
-            HighScore = new ReactiveProperty<int>(0);
-            disposables = new CompositeDisposable();
-
             Score
                 .Where(score => score > HighScore.Value)
                 .Subscribe(score => SetHighScore(score))
