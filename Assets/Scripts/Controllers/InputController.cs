@@ -1,6 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Match3.Core;
 using Match3.Game;
+using Unity.Mathematics;
 using UnityEngine;
 using VContainer;
 
@@ -14,8 +15,8 @@ namespace Match3.Controllers
         
         private Camera mainCamera;
 
-        private Cell dragStartCell;
-        private Vector3 dragStartWorldPosition;
+        private int2 dragStartPos;
+        private float3 dragStartWorldPosition;
         private bool isDragging;
 
         public void Init()
@@ -26,9 +27,7 @@ namespace Match3.Controllers
         public void Update()
         {
             if (!stateMachine.CanInput)
-            {
                 return;
-            }
 
             HandleDragInput();
         }
@@ -54,11 +53,10 @@ namespace Match3.Controllers
         private void HandleDragBegin()
         {
             var worldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
-            var cell = gridController.GetCellAtWorldPosition(worldPos);
-
-            if (cell != null && !cell.IsEmpty)
+            var gridPos = gridController.WorldToGridPos(worldPos);
+            if (gridController.IsValidPosition(gridPos.x, gridPos.y))
             {
-                dragStartCell = cell;
+                dragStartPos = gridPos;
                 dragStartWorldPosition = worldPos;
                 isDragging = true;
             }
@@ -66,19 +64,17 @@ namespace Match3.Controllers
 
         private void HandleDrag()
         {
-            var currentWorldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            float3 currentWorldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
             float dragDistance = Vector3.Distance(dragStartWorldPosition, currentWorldPos);
 
             if (dragDistance >= config.MinDragDistance)
             {
-                Vector3 dragDirection = (currentWorldPos - dragStartWorldPosition).normalized;
-                Cell targetCell = GetTargetCellFromDirection(dragDirection);
-
-                if (targetCell != null && !targetCell.IsEmpty)
+                var dragDirection = math.normalize(currentWorldPos - dragStartWorldPosition);
+                var targetPos = GetTargetFromDirection(dragDirection);
+                if (gridController.IsValidPosition(targetPos.x, targetPos.y))
                 {
-                    stateMachine.ProcessSwapAsync(dragStartCell, targetCell).Forget();
+                    stateMachine.ProcessSwapAsync(dragStartPos, targetPos).Forget();
                     isDragging = false;
-                    dragStartCell = null;
                 }
             }
         }
@@ -86,29 +82,19 @@ namespace Match3.Controllers
         private void HandleDragEnd()
         {
             isDragging = false;
-            dragStartCell = null;
         }
 
-        private Cell GetTargetCellFromDirection(Vector3 direction)
+        private int2 GetTargetFromDirection(Vector3 direction)
         {
-            if (dragStartCell == null)
-            {
-                return null;
-            }
-
-            int targetX = dragStartCell.Position.x;
-            int targetY = dragStartCell.Position.y;
+            int targetX = dragStartPos.x;
+            int targetY = dragStartPos.y;
 
             if (Mathf.Abs(direction.x) > Mathf.Abs(direction.y))
-            {
                 targetX += direction.x > 0 ? 1 : -1;
-            }
             else
-            {
                 targetY += direction.y > 0 ? 1 : -1;
-            }
 
-            return gridController.GetCell(targetX, targetY);
+            return new(targetX, targetY);
         }
     }
 }

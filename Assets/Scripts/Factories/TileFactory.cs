@@ -1,6 +1,8 @@
 using System.Collections.Generic;
 using Match3.Core;
+using Match3.ECS.Components;
 using Match3.Game;
+using Unity.Entities;
 using UnityEngine;
 using VContainer;
 
@@ -11,55 +13,62 @@ namespace Match3.Factories
         [Inject] private readonly Tile tilePrefab;
         [Inject] private readonly Transform parent;
         [Inject] private readonly GameConfig config;
+        [Inject] private readonly EntityManager entityManager;
 
-        private readonly Queue<Tile> pool = new Queue<Tile>();
+        private readonly Queue<Entity> pool = new();
+        private readonly Dictionary<Entity, Tile> views = new();
 
-        public Tile Create(Vector3 position)
+        public Entity Create(int x, int y, TileType type)
         {
-            Tile tile;
-        
-            if (pool.Count > 0)
-            {
-                tile = pool.Dequeue();
-                tile.gameObject.SetActive(true);
-                tile.transform.position = position;
-            }
-            else
-            {
-                tile = Object.Instantiate(tilePrefab, position, Quaternion.identity, parent);
-            }
-            
-            var rnd = Random.Range(0, config.TilesData.Count);
-            tile.Init(config.TilesData[rnd]);
-            tile.gameObject.name = $"Tile_{tile.Type}_{position.x}_{position.y}";
-            return tile;
-        }
-
-        public Tile CreateSpecificType(Vector3 position, TileType type)
-        {
-            Tile tile;
+            Entity entity;
+            Tile view;
 
             if (pool.Count > 0)
             {
-                tile = pool.Dequeue();
-                tile.gameObject.SetActive(true);
-                tile.transform.position = position;
+                entity = pool.Dequeue();
+                view = views[entity];
+                view.gameObject.SetActive(true);
+                view.transform.position = new(x, y);
+                entityManager.SetComponentData(entity, new TileData { Type = type });
             }
             else
             {
-                tile = Object.Instantiate(tilePrefab, position, Quaternion.identity, parent);
+                entity = entityManager.CreateEntity();
+                view = Object.Instantiate(tilePrefab, new(x, y), Quaternion.identity, parent);
+                entityManager.AddComponentData(entity, new TileData { Type = type });
+                entityManager.AddComponentData(entity, new TileViewData { View = view });
+                views[entity] = view;
             }
 
             var data = config.TilesData.Find(s => s.type == type);
-            tile.Init(data);
-            tile.gameObject.name = $"Tile_{tile.Type}_{position.x}_{position.y}";
-            return tile;
+            view.Init(data);
+
+            return entity;
         }
 
-        public void Return(Tile tile)
+        public void Return(Entity entity)
         {
-            tile.gameObject.SetActive(false);
-            pool.Enqueue(tile);
+            if (!views.TryGetValue(entity, out var view))
+                return;
+
+            view.gameObject.SetActive(false);
+            pool.Enqueue(entity);
+        }
+
+        public Tile GetView(Entity entity)
+        {
+            return views.TryGetValue(entity, out var view) ? view : null;
+        }
+
+        public Entity GetEntity(Tile view)
+        {
+            foreach (var pair in views)
+            {
+                if (pair.Value == view)
+                    return pair.Key;
+            }
+
+            return Entity.Null;
         }
     }
 }

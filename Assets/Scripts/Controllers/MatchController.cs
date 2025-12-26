@@ -1,40 +1,100 @@
 using System;
 using System.Collections.Generic;
-using Cysharp.Threading.Tasks;
 using Match3.Core;
 using Match3.Game;
+using Unity.Collections;
+using Unity.Mathematics;
 using VContainer;
 
 namespace Match3.Controllers
 {
-    public class MatchController
+    public class MatchController : IDisposable
     {
-        [Inject] private readonly GameConfig config;
-        [Inject] private readonly GridController gridController;
+        private readonly GameConfig config;
+        private readonly GridController gridController;
 
-        private readonly HashSet<Tile> matchesCache = new HashSet<Tile>();
-        private readonly List<Tile> matchesList = new List<Tile>();
+        private readonly NativeHashSet<int2> matches;
+        private readonly List<int2> matchesList = new();
         private bool? hasPossibleMoves = null;
 
-        #region Public methods
-        public List<Tile> FindMatches()
+        [Inject]
+        public MatchController(GameConfig config, GridController gridController)
         {
-            matchesCache.Clear();
+            this.config = config;
+            this.gridController = gridController;
+            matches = new(config.GridWidth * config.GridHeight, Allocator.Persistent);
+        }
+
+        public void Dispose()
+        {
+            if (matches.IsCreated)
+                matches.Dispose();
+        }
+
+        #region Matches check
+        public List<int2> FindMatches()
+        {
+            matches.Clear();
+
+            ScanLines(true);
+            ScanLines(false);
+
             matchesList.Clear();
+            foreach (var match in matches)
+                matchesList.Add(match);
 
-            CheckHorizontalMatches(matchesCache);
-            CheckVerticalMatches(matchesCache);
-
-            matchesList.AddRange(matchesCache);
             return matchesList;
         }
 
-        public async UniTask DestroyMatchesAsync(List<Tile> matches)
+        private void ScanLines(bool horizontal)
         {
-            var tasks = matches.ConvertAll(tile => gridController.RemoveTileAsync(tile));
-            await UniTask.WhenAll(tasks);
+            int linesCount = horizontal ? config.GridHeight : config.GridWidth;
+            int lineLength = horizontal ? config.GridWidth : config.GridHeight;
+
+            for (int i = 0; i < linesCount; i++)
+                ScanLine(i, lineLength, horizontal);
         }
 
+        private void ScanLine(int lineIdx, int length, bool horizontal)
+        {
+            int i = 0;
+
+            while (i < length)
+            {
+                int x = horizontal ? i : lineIdx;
+                int y = horizontal ? lineIdx : i;
+
+                var type = gridController.GetTileTypeAt(x, y);
+                if (type == TileType.None)
+                {
+                    i++;
+                    continue;
+                }
+
+                int j = i + 1;
+                while (j < length)
+                {
+                    int nx = horizontal ? j : lineIdx;
+                    int ny = horizontal ? lineIdx : j;
+
+                    if (gridController.GetTileTypeAt(nx, ny) != type)
+                        break;
+
+                    j++;
+                }
+
+                if (j - i >= config.MatchCount)
+                {
+                    for (int k = i; k < j; k++)
+                        matches.Add(horizontal ? new(k, lineIdx) : new(lineIdx, k));
+                }
+
+                i = j;
+            }
+        }
+        #endregion
+
+        #region Possible moves
         public bool HasPossibleMoves()
         {
             if (!hasPossibleMoves.HasValue)
@@ -48,169 +108,75 @@ namespace Match3.Controllers
             {
                 for (int y = 0; y < config.GridHeight; y++)
                 {
-                    var cell = gridController.GetCell(x, y);
-                    if (cell == null || cell.IsEmpty)
-                    {
-                        continue;
-                    }
-
-                    // try swap right
-                    if (x < config.GridWidth - 1)
-                    {
-                        var rightCell = gridController.GetCell(x + 1, y);
-                        if (rightCell != null && !rightCell.IsEmpty)
-                        {
-                            if (CanCreateMatch(cell, rightCell))
-                            {
-                                return true;
-                            }
-                        }
-                    }
-
-                    // try swap up
-                    if (y < config.GridHeight - 1)
-                    {
-                        var upCell = gridController.GetCell(x, y + 1);
-                        if (upCell != null && !upCell.IsEmpty)
-                        {
-                            if (CanCreateMatch(cell, upCell))
-                            {
-                                return true;
-                            }
-                        }
-                    }
+                    if (TrySwapCheck(x, y, x + 1, y))
+                        return true;
+                    if (TrySwapCheck(x, y, x, y + 1))
+                        return true;
                 }
             }
-
             return false;
         }
 
-        public void InvalidateHasPossibleMoves()
+        private bool TrySwapCheck(int x1, int y1, int x2, int y2)
         {
-            hasPossibleMoves = null;
-        }
-        #endregion
+            if (!gridController.IsValidPosition(x2, y2))
+                return false;
 
-        #region Matches check
-        private void CheckHorizontalMatches(HashSet<Tile> matches)
-        {
-            var matchCells = new List<Cell>();
+            var typeA = gridController.GetTileTypeAt(x1, y1);
+            var typeB = gridController.GetTileTypeAt(x2, y2);
 
-            for (int y = 0; y < config.GridHeight; y++)
-            {
-                ScanLine(config.GridWidth, i => gridController.GetCell(i, y), matchCells);
+            if (typeA == TileType.None || typeB == TileType.None)
+                return false;
 
-                foreach (var cell in matchCells)
-                {
-                    matches.Add(cell.Tile);
-                }
-            }
-        }
-
-        private void CheckVerticalMatches(HashSet<Tile> matches)
-        {
-            var matchCells = new List<Cell>();
-
-            for (int x = 0; x < config.GridWidth; x++)
-            {
-                ScanLine(config.GridHeight, i => gridController.GetCell(x, i), matchCells);
-
-                foreach (var cell in matchCells)
-                {
-                    matches.Add(cell.Tile);
-                }
-            }
-        }
-
-        private void ScanLine(int length, Func<int, Cell> getCell, List<Cell> matches)
-        {
-            int i = 0;
-
-            while (i < length)
-            {
-                var cell = getCell(i);
-                if (cell == null || cell.IsEmpty)
-                {
-                    i++;
-                    continue;
-                }
-
-                int j = i + 1;
-                var type = cell.Tile.Type;
-
-                while (j < length)
-                {
-                    var next = getCell(j);
-                    if (next == null || next.IsEmpty || next.Tile.Type != type)
-                    {
-                        break;
-                    }
-
-                    j++;
-                }
-
-                int count = j - i;
-                if (count >= config.MatchCount)
-                {
-                    for (int k = i; k < j; k++)
-                    {
-                        matches.Add(getCell(k));
-                    }
-                }
-
-                i = j;
-            }
-        }
-        #endregion
-
-        #region Move check
-        private bool CanCreateMatch(Cell cellA, Cell cellB)
-        {
-            (cellA.Tile, cellB.Tile) = (cellB.Tile, cellA.Tile);
-
-            bool hasMatch = IsMatchAt(cellA.Position.x, cellA.Position.y) ||
-                            IsMatchAt(cellB.Position.x, cellB.Position.y);
-
-            (cellA.Tile, cellB.Tile) = (cellB.Tile, cellA.Tile);
-
+            gridController.Swap(new(x1, y1), new(x2, y2));
+            bool hasMatch = HasMatchAt(x1, y1) || HasMatchAt(x2, y2);
+            gridController.Swap(new(x1, y1), new(x2, y2));
             return hasMatch;
         }
 
-        private bool IsMatchAt(int x, int y)
+        private bool HasMatchAt(int x, int y)
         {
-            var cell = gridController.GetCell(x, y);
-            if (cell == null || cell.IsEmpty)
-            {
-                return false;
-            }
-
-            var tileType = cell.Tile.Type;
-            var horizontalCount = CountLine(x, y, 1, 0, tileType) +
-                CountLine(x, y, -1, 0, tileType) - 1;
-            var verticalCount = CountLine(x, y, 0, 1, tileType) +
-                CountLine(x, y, 0, -1, tileType) - 1;
-
-            return horizontalCount >= config.MatchCount || verticalCount >= config.MatchCount;
+            return HasLine(x, y, true) || HasLine(x, y, false);
         }
 
-        private int CountLine(int x, int y, int dx, int dy, TileType type)
+        private bool HasLine(int x, int y, bool horizontal)
         {
-            int count = 0;
+            var type = gridController.GetTileTypeAt(x, y);
+            if (type == TileType.None)
+                return false;
 
-            while (true)
+            int count = 1;
+
+            int dx = horizontal ? 1 : 0;
+            int dy = horizontal ? 0 : 1;
+
+            int cx = x + dx;
+            int cy = y + dy;
+
+            while (gridController.IsValidPosition(cx, cy) && gridController.GetTileTypeAt(cx, cy) == type)
             {
-                var c = gridController.GetCell(x, y);
-                if (c == null || c.IsEmpty || c.Tile.Type != type)
-                {
-                    break;
-                }
-
                 count++;
-                x += dx;
-                y += dy;
+                cx += dx;
+                cy += dy;
+            }
+            
+            cx = x - dx;
+            cy = y - dy;
+
+            while (gridController.IsValidPosition(cx, cy) && gridController.GetTileTypeAt(cx, cy) == type)
+            {
+                count++;
+                cx -= dx;
+                cy -= dy;
             }
 
-            return count;
+            return count >= config.MatchCount;
+        }
+
+        // Must be called after any grid changes (swap, fall, fill)
+        public void InvalidateHasPossibleMoves()
+        {
+            hasPossibleMoves = null;
         }
         #endregion
     }

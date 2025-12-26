@@ -557,7 +557,6 @@ MonoBehaviour:
   autoRun: 1
   autoInjectGameObjects: []
   gridParent: {fileID: 530064237}
-  cellPrefab: {fileID: 5290282399039535562, guid: 40d761562a232473b8bc17210ae8e327, type: 3}
   tilePrefab: {fileID: -6045871460475888183, guid: 7003989a3ef6c4253937fd11925f9310, type: 3}
   gameUI: {fileID: 1812494297}
 --- !u!4 &300458237
@@ -585,7 +584,6 @@ GameObject:
   m_Component:
   - component: {fileID: 519420032}
   - component: {fileID: 519420031}
-  - component: {fileID: 519420029}
   - component: {fileID: 519420030}
   - component: {fileID: 519420033}
   m_Layer: 0
@@ -595,14 +593,6 @@ GameObject:
   m_NavMeshLayer: 0
   m_StaticEditorFlags: 0
   m_IsActive: 1
---- !u!81 &519420029
-AudioListener:
-  m_ObjectHideFlags: 0
-  m_CorrespondingSourceObject: {fileID: 0}
-  m_PrefabInstance: {fileID: 0}
-  m_PrefabAsset: {fileID: 0}
-  m_GameObject: {fileID: 519420028}
-  m_Enabled: 1
 --- !u!114 &519420030
 MonoBehaviour:
   m_ObjectHideFlags: 0

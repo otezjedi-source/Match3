@@ -4,6 +4,7 @@ using DG.Tweening;
 using Match3.Core;
 using Spine;
 using Spine.Unity;
+using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
@@ -15,10 +16,6 @@ namespace Match3.Game
         [SerializeField] private SpriteRenderer sprite;
         [SerializeField] private SkeletonAnimation clearAnimation;
 
-        public TileType Type { get; private set; }
-        public Cell Cell { get; set; }
-        public Vector2Int Position => Cell != null ? Cell.Position : Vector2Int.zero;
-
         private AsyncOperationHandle<Sprite> spriteHandle;
 
         public void Init(GameConfig.TileData tileData)
@@ -26,7 +23,6 @@ namespace Match3.Game
             sprite.gameObject.SetActive(false);
             clearAnimation.gameObject.SetActive(false);
 
-            Type = tileData.type;
             clearAnimation.skeletonDataAsset = tileData.clearAnim;
 
             spriteHandle = Addressables.LoadAssetAsync<Sprite>(tileData.spriteRef);
@@ -45,7 +41,7 @@ namespace Match3.Game
             }
         }
 
-        public async UniTask MoveToAsync(Vector3 targetPosition, float duration, CancellationToken ct = default)
+        public async UniTask MoveToAsync(float3 targetPosition, float duration, CancellationToken ct = default)
         {
             await transform.DOMove(targetPosition, duration)
                 .SetEase(Ease.Linear)

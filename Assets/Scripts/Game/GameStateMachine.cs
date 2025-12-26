@@ -4,98 +4,89 @@ using VContainer;
 using Match3.Controllers;
 using Match3.Core;
 using UniRx;
+using System.Collections.Generic;
+using System;
+using Unity.Mathematics;
 
 namespace Match3.Game
 {
     public class GameStateMachine
     {
+        enum State
+        {
+            Idle = 1,
+            Swapping = 2,
+            Matching = 3,
+            Destroying = 4,
+            Falling = 5,
+            Filling = 6,
+        }
+
         [Inject] private readonly GridController gridController;
         [Inject] private readonly MatchController matchController;
         [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly SoundController soundController;
         [Inject] private readonly GameConfig config;
 
-        public readonly ReactiveProperty<GameState> State = null;
-        public readonly Subject<Unit> OnGameOver = null;
+        public readonly Subject<Unit> OnGameOver = new();
 
-        private readonly CancellationTokenSource cts = null;
-        
-        public bool CanInput => State.Value == GameState.Idle;
-
-        public GameStateMachine()
-        {
-            State = new ReactiveProperty<GameState>(GameState.Idle);
-            OnGameOver = new Subject<Unit>();
-            cts = new CancellationTokenSource();
-        }
+        private State state = State.Idle;        
+        public bool CanInput => state == State.Idle;
 
         public void Dispose()
         {
-            State?.Dispose();
             OnGameOver?.Dispose();
-            cts?.Cancel();
-            cts?.Dispose();
         }
 
-        public async UniTask ProcessSwapAsync(Cell cellA, Cell cellB)
+        public async UniTask ProcessSwapAsync(int2 posA, int2 posB, CancellationToken ct = default)
         {
             if (!CanInput)
+                return;
+
+            state = State.Swapping;
+
+            await gridController.SwapAsync(posA, posB, ct);
+
+            state = State.Matching;
+
+            var matches = matchController.FindMatches();
+            if (matches.Count == 0)
             {
+                await gridController.SwapAsync(posB, posA, ct);
+                state = State.Idle;
                 return;
             }
 
-            State.Value = GameState.Swapping;
+            await ProcessMatchesLoop(matches);
 
-            await gridController.SwapTilesAsync(cellA, cellB, cts.Token);
+            state = State.Idle;
 
-            State.Value = GameState.CheckingMatch;
-
-            var matches = matchController.FindMatches();
-            if (matches.Count > 0)
-            {
-                await ProcessMatchesLoop();
-            }
-            else
-            {
-                await gridController.SwapTilesAsync(cellB, cellA, cts.Token);
-                State.Value = GameState.Idle;
-            }
+            if (!matchController.HasPossibleMoves())    
+                OnGameOver?.OnNext(Unit.Default);
         }
 
-        private async UniTask ProcessMatchesLoop()
+        private async UniTask ProcessMatchesLoop(List<int2> matches, CancellationToken ct = default)
         {
-            while (true)
+            while (matches.Count > 0)
             {
-                State.Value = GameState.CheckingMatch;
-                
-                var matches = matchController.FindMatches();
-                if (matches.Count == 0)
-                {
-                    if (!matchController.HasPossibleMoves())
-                    {
-                        State.Value = GameState.Idle;
-                        OnGameOver?.OnNext(Unit.Default);
-                        break;
-                    }
-                    
-                    State.Value = GameState.Idle;
-                    break;
-                }
-                
-                await UniTask.Delay((int)(config.MatchDelay * 1000), cancellationToken: cts.Token);
+                await UniTask.Delay(TimeSpan.FromSeconds(config.MatchDelay), cancellationToken: ct);
 
-                State.Value = GameState.Destroying;
+                state = State.Destroying;
                 soundController.PlayMatch();
                 
-                await matchController.DestroyMatchesAsync(matches);
+                await gridController.RemoveTilesAsync(matches);
                 scoreController.AddScore(matches.Count * 10);
 
-                State.Value = GameState.Falling;
-                await gridController.FallTilesAsync(cts.Token);
+                state = State.Falling;
+                await gridController.FallTilesAsync(ct);
 
-                State.Value = GameState.Filling;
-                await gridController.FillEmptyCellsAsync(cts.Token);
+                state = State.Filling;
+                await gridController.FillEmptyCellsAsync(ct);
+
                 matchController.InvalidateHasPossibleMoves();
+
+                state = State.Matching;
+                matches = matchController.FindMatches();
             }
         }
     }
