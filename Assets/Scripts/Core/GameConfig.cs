@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using Match3.Game;
-using Spine.Unity;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -37,7 +36,7 @@ namespace Match3.Core
         {
             public TileType type;
             public AssetReference spriteRef;
-            public SkeletonDataAsset clearAnim;
+            public AssetReference clearAnimRef;
         }
     }
 }

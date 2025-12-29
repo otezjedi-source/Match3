@@ -15,6 +15,7 @@ MonoBehaviour:
   GridWidth: 5
   GridHeight: 9
   MatchCount: 3
+  ScoreForTile: 10
   SwapDuration: 0.1
   FallDuration: 0.2
   MinDragDistance: 0.5
@@ -27,7 +28,12 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-    clearAnim: {fileID: 11400000, guid: 3fa58718aa0474b20b2256ac91d6d670, type: 2}
+    clearAnimRef:
+      m_AssetGUID: 3fa58718aa0474b20b2256ac91d6d670
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
   - type: 2
     spriteRef:
       m_AssetGUID: 17963ea44b9b24290b4da9b693b5f6a5
@@ -35,7 +41,12 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-    clearAnim: {fileID: 11400000, guid: f19fe8831d481403d9a7a800c4d4b136, type: 2}
+    clearAnimRef:
+      m_AssetGUID: f19fe8831d481403d9a7a800c4d4b136
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
   - type: 3
     spriteRef:
       m_AssetGUID: a7173e2bc6b31494b8c1280e8cb8b5a9
@@ -43,7 +54,12 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-    clearAnim: {fileID: 11400000, guid: 9fc730f7e056645edb19a94aedb2ab07, type: 2}
+    clearAnimRef:
+      m_AssetGUID: 9fc730f7e056645edb19a94aedb2ab07
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
   - type: 4
     spriteRef:
       m_AssetGUID: 4a49eb5e2c66842f7b8d52e8e143c2c4
@@ -51,7 +67,12 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-    clearAnim: {fileID: 11400000, guid: 1dda3103986b04d29a17361a9d592897, type: 2}
+    clearAnimRef:
+      m_AssetGUID: 1dda3103986b04d29a17361a9d592897
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
   - type: 5
     spriteRef:
       m_AssetGUID: 397dc8eb7f5604ab8a07ffdf96d22bd8
@@ -59,7 +80,12 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-    clearAnim: {fileID: 11400000, guid: aa587c4fd6f6140a1a10c23dfec3856b, type: 2}
+    clearAnimRef:
+      m_AssetGUID: aa587c4fd6f6140a1a10c23dfec3856b
+      m_SubObjectName: 
+      m_SubObjectType: 
+      m_SubObjectGUID: 
+      m_EditorAssetChanged: 0
   ButtonClickSound: {fileID: 8300000, guid: 0f3752d3b66e844a58597be42fed46bd, type: 3}
   MatchSound: {fileID: 8300000, guid: a3a1d34b9e8d64934b3e3482764df88c, type: 3}
   DropSound: {fileID: 8300000, guid: bdd24d2ea45fc449bb520ebe9947d335, type: 3}

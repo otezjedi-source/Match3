@@ -2,12 +2,12 @@ using System.Threading;
 using Cysharp.Threading.Tasks;
 using DG.Tweening;
 using Match3.Core;
+using Match3.Utils;
 using Spine;
 using Spine.Unity;
 using Unity.Mathematics;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
-using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Match3.Game
 {
@@ -16,31 +16,34 @@ namespace Match3.Game
         [SerializeField] private SpriteRenderer sprite;
         [SerializeField] private SkeletonAnimation clearAnimation;
 
-        private AsyncOperationHandle<Sprite> spriteHandle;
+        private AssetHandle<Sprite> spriteHandle = new();
+        private AssetHandle<SkeletonDataAsset> clearAnimHandle = new();
 
         public void Init(GameConfig.TileData tileData)
         {
             sprite.gameObject.SetActive(false);
             clearAnimation.gameObject.SetActive(false);
 
-            if (clearAnimation.skeletonDataAsset != tileData.clearAnim)
-            {
-                clearAnimation.skeletonDataAsset = tileData.clearAnim;
-                clearAnimation.Initialize(true);
-            }
+            InitSpriteAsync(tileData.spriteRef).Forget();
+            InitClearAnimAsync(tileData.clearAnimRef).Forget();
+        }
 
-            spriteHandle = Addressables.LoadAssetAsync<Sprite>(tileData.spriteRef);
-            spriteHandle.Completed += handle =>
-            {
-                sprite.sprite = handle.Result;
-                sprite.gameObject.SetActive(true);
-            };
+        private async UniTaskVoid InitSpriteAsync(AssetReference spriteRef)
+        {
+            sprite.sprite = await spriteHandle.LoadAsync(spriteRef);
+            sprite.gameObject.SetActive(true);
+        }
+
+        private async UniTaskVoid InitClearAnimAsync(AssetReference clearAnimRef)
+        {
+            clearAnimation.skeletonDataAsset = await clearAnimHandle.LoadAsync(clearAnimRef);
+            clearAnimation.Initialize(true);
         }
 
         public void Clear()
         {
-            if (spriteHandle.IsValid())
-                Addressables.Release(spriteHandle);
+            spriteHandle.Release();
+            clearAnimHandle.Release();
         }
 
         private void OnDestroy()

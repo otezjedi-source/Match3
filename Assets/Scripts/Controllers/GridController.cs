@@ -139,10 +139,20 @@ namespace Match3.Controllers
 
             OnGridChanged();
 
-            await UniTask.WhenAll(
-                viewA.MoveToAsync(new(posB, 0), config.SwapDuration, ct),
-                viewB.MoveToAsync(new(posA, 0), config.SwapDuration, ct)
-            );
+            try
+            {
+                await UniTask.WhenAll(
+                    viewA.MoveToAsync(new(posB, 0), config.SwapDuration, ct),
+                    viewB.MoveToAsync(new(posA, 0), config.SwapDuration, ct)
+                );
+            } catch (OperationCanceledException)
+            {
+                // Swap back if cancelled
+                (grid[idxA], grid[idxB]) = (grid[idxB], grid[idxA]);
+                OnGridChanged();
+                throw;
+            }
+            
         }
 
         public void SwapCached(int2 posA, int2 posB)
