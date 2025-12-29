@@ -22,11 +22,14 @@ namespace Match3.Controllers
         {
             this.config = config;
             this.gridController = gridController;
+
+            gridController.GridChanged += InvalidateHasPossibleMoves;
             matches = new(config.GridWidth * config.GridHeight, Allocator.Persistent);
         }
 
         public void Dispose()
         {
+            gridController.GridChanged -= InvalidateHasPossibleMoves;
             if (matches.IsCreated)
                 matches.Dispose();
         }
@@ -128,9 +131,9 @@ namespace Match3.Controllers
             if (typeA == TileType.None || typeB == TileType.None)
                 return false;
 
-            gridController.Swap(new(x1, y1), new(x2, y2));
+            gridController.SwapCached(new(x1, y1), new(x2, y2));
             bool hasMatch = HasMatchAt(x1, y1) || HasMatchAt(x2, y2);
-            gridController.Swap(new(x1, y1), new(x2, y2));
+            gridController.SwapCached(new(x1, y1), new(x2, y2));
             return hasMatch;
         }
 
@@ -173,8 +176,7 @@ namespace Match3.Controllers
             return count >= config.MatchCount;
         }
 
-        // Must be called after any grid changes (swap, fall, fill)
-        public void InvalidateHasPossibleMoves()
+        private void InvalidateHasPossibleMoves()
         {
             hasPossibleMoves = null;
         }

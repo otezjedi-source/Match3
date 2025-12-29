@@ -17,6 +17,7 @@ namespace Match3.Factories
 
         private readonly Queue<Entity> pool = new();
         private readonly Dictionary<Entity, Tile> views = new();
+        private readonly Dictionary<Tile, Entity> entities = new();
 
         public Entity Create(int x, int y, TileType type)
         {
@@ -38,6 +39,7 @@ namespace Match3.Factories
                 entityManager.AddComponentData(entity, new TileData { Type = type });
                 entityManager.AddComponentData(entity, new TileViewData { View = view });
                 views[entity] = view;
+                entities[view] = entity;
             }
 
             var data = config.TilesData.Find(s => s.type == type);
@@ -48,7 +50,8 @@ namespace Match3.Factories
 
         public void Return(Entity entity)
         {
-            if (!views.TryGetValue(entity, out var view))
+            var view = GetView(entity);
+            if (view == null)
                 return;
 
             view.Clear();
@@ -56,20 +59,8 @@ namespace Match3.Factories
             pool.Enqueue(entity);
         }
 
-        public Tile GetView(Entity entity)
-        {
-            return views.TryGetValue(entity, out var view) ? view : null;
-        }
+        public Tile GetView(Entity entity) => views.TryGetValue(entity, out var view) ? view : null;
 
-        public Entity GetEntity(Tile view)
-        {
-            foreach (var pair in views)
-            {
-                if (pair.Value == view)
-                    return pair.Key;
-            }
-
-            return Entity.Null;
-        }
+        public Entity GetEntity(Tile view) => entities.TryGetValue(view, out var entity) ? entity : Entity.Null;
     }
 }

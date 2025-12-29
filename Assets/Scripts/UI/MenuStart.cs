@@ -2,7 +2,9 @@ using Cysharp.Threading.Tasks;
 using Match3.Controllers;
 using TMPro;
 using UniRx;
+#if UNITY_EDITOR
 using UnityEditor;
+#endif
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;

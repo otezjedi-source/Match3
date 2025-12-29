@@ -27,6 +27,7 @@ namespace Match3.Core
             builder.Register<MatchController>(Lifetime.Scoped);
             builder.Register<GameStateMachine>(Lifetime.Scoped);
             builder.Register<InputController>(Lifetime.Scoped);
+            builder.Register<TileTypesController>(Lifetime.Scoped);
 
             builder.RegisterComponent(gameUI).AsSelf();
             builder.RegisterComponentInHierarchy<MenuGame>();

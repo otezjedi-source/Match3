@@ -84,8 +84,6 @@ namespace Match3.Game
                 state = State.Filling;
                 await gridController.FillEmptyCellsAsync(ct);
 
-                matchController.InvalidateHasPossibleMoves();
-
                 state = State.Matching;
                 matches = matchController.FindMatches();
             }

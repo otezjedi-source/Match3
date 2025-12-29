@@ -1,10 +1,13 @@
+using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Match3.Core;
 using Match3.ECS.Components;
 using Match3.Factories;
 using Match3.Game;
+using Unity.Collections;
 using Unity.Entities;
 using Unity.Mathematics;
 using VContainer;
@@ -12,20 +15,33 @@ using Random = UnityEngine.Random;
 
 namespace Match3.Controllers
 {
-    public class GridController
+    public class GridController : IDisposable
     {
         [Inject] private readonly GameConfig config;
         [Inject] private readonly TileFactory tileFactory;
+        [Inject] private readonly TileTypesController tileTypesController;
         [Inject] private readonly SoundController soundController;
         [Inject] private readonly EntityManager entityManager;
 
+        public event Action GridChanged;
+
         private Entity gridEntity;
+        private NativeArray<TileType> cellTypesCache;
+
+        public void Dispose()
+        {
+            if (cellTypesCache.IsCreated)
+                cellTypesCache.Dispose();
+        }
 
         #region Initialization
         public void Init()
         {
             CreateGridEntity();
             CreateTiles();
+            
+            cellTypesCache = new(config.GridWidth * config.GridHeight, Allocator.Persistent);
+            RebuildCellTypes();
         }
 
         private void CreateGridEntity()
@@ -67,16 +83,18 @@ namespace Match3.Controllers
 
             List<TileType> GetAllowedTypes(int x, int y, (Entity tile, TileType type)[] tiles)
             {
-                var allowed = new List<TileType>(config.TilesData.Count);
-                foreach (var data in config.TilesData)
-                    allowed.Add(data.type);
+                var allowed = new List<TileType>();
+                var types = tileTypesController.GetAllTypes();
+                foreach (var t in types)
+                {
+                    if (x >= 2 && t == tiles[Idx(x - 1, y)].type && t == tiles[Idx(x - 2, y)].type)
+                        continue;
 
-                if (x >= 2 && tiles[Idx(x - 1, y)].type == tiles[Idx(x - 2, y)].type)
-                    allowed.Remove(tiles[Idx(x - 1, y)].type);
-                
-                if (y >= 2 && tiles[Idx(x, y - 1)].type == tiles[Idx(x, y - 2)].type)
-                    allowed.Remove(tiles[Idx(x, y - 1)].type);
+                    if (y >= 2 && t == tiles[Idx(x, y - 1)].type && t == tiles[Idx(x, y - 2)].type)
+                        continue;
 
+                    allowed.Add(t);
+                }
                 return allowed;
             }
         }
@@ -85,6 +103,7 @@ namespace Match3.Controllers
         {
             ClearTiles();
             CreateTiles();
+            OnGridChanged();
         }
 
         private void ClearTiles()
@@ -118,20 +137,20 @@ namespace Match3.Controllers
             var viewA = tileFactory.GetView(entityA);
             var viewB = tileFactory.GetView(entityB);
 
+            OnGridChanged();
+
             await UniTask.WhenAll(
                 viewA.MoveToAsync(new(posB, 0), config.SwapDuration, ct),
                 viewB.MoveToAsync(new(posA, 0), config.SwapDuration, ct)
             );
         }
 
-        public void Swap(int2 posA, int2 posB)
+        public void SwapCached(int2 posA, int2 posB)
         {
-            var grid = entityManager.GetBuffer<GridCell>(gridEntity);
-
             int idxA = Idx(posA.x, posA.y);
             int idxB = Idx(posB.x, posB.y);
 
-            (grid[idxA], grid[idxB]) = (grid[idxB], grid[idxA]);
+            (cellTypesCache[idxA], cellTypesCache[idxB]) = (cellTypesCache[idxB], cellTypesCache[idxA]);
         }
         #endregion
 
@@ -145,6 +164,8 @@ namespace Match3.Controllers
             var tasks = new UniTask[count];
             for (int i = 0; i < count; i++)
                 tasks[i] = RemoveAtAsync(matches[i], ct);
+
+            OnGridChanged();
 
             await UniTask.WhenAll(tasks);
         }
@@ -197,6 +218,8 @@ namespace Match3.Controllers
                 }
             }
 
+            OnGridChanged();
+
             if (movedTiles.Count > 0)
                 await AnimateTilesFall(movedTiles, ct);
         }
@@ -212,35 +235,20 @@ namespace Match3.Controllers
         #region Fill
         public async UniTask FillEmptyCellsAsync(CancellationToken ct = default)
         {
+            var emptyCells = GetEmptyCells();
+            if (emptyCells.Count == 0)
+                return;
+
+            var newTiles = CreateNewTiles();
+
             var grid = entityManager.GetBuffer<GridCell>(gridEntity);
-            var newTiles = new List<(Entity entity, Tile view, int2 pos)>();
-
-            var types = new List<TileType>(config.TilesData.Count);
-            foreach (var data in config.TilesData)
-                types.Add(data.type);
-
-            for (int x = 0; x < config.GridWidth; x++)
-            {
-                int yOffset = 0;
-                for (int y = 0; y < config.GridHeight; y++)
-                {
-                    if (grid[Idx(x, y)].Tile != Entity.Null)
-                        continue;
-
-                    int rnd = Random.Range(0, types.Count);
-                    var entity = tileFactory.Create(x, config.GridHeight + yOffset, types[rnd]);
-                    var view = tileFactory.GetView(entity);
-                    newTiles.Add((entity, view, new(x, y)));
-                    ++yOffset;
-                }
-            }
-
-            grid = entityManager.GetBuffer<GridCell>(gridEntity);
             foreach (var (entity, _, pos) in newTiles)
             {
                 int idx = Idx(pos.x, pos.y);
                 grid[idx] = new GridCell { Tile = entity };
             }
+
+            OnGridChanged();
 
             var moveViews = new List<(Tile tile, float3 pos)>();
             foreach (var (_, view, pos) in newTiles)
@@ -248,25 +256,72 @@ namespace Match3.Controllers
 
             if (moveViews.Count > 0)
                 await AnimateTilesFall(moveViews, ct);
+
+            Dictionary<int, List<int>> GetEmptyCells()
+            {
+                var grid = entityManager.GetBuffer<GridCell>(gridEntity);
+                var emptyCells = new Dictionary<int, List<int>>();
+                for (int x = 0; x < config.GridWidth; x++)
+                {
+                    var emptyRow = new List<int>();
+                    for (int y = 0; y < config.GridHeight; y++)
+                    {
+                        if (grid[Idx(x, y)].Tile == Entity.Null)
+                            emptyRow.Add(y);
+                    }
+                    emptyCells.Add(x, emptyRow);
+                }
+                return emptyCells;
+            }
+
+            List<(Entity, Tile, int2)> CreateNewTiles()
+            {
+                var newTiles = new List<(Entity entity, Tile view, int2 pos)>();
+                foreach (var (x, yList) in emptyCells)
+                {
+                    for (int i = 0; i < yList.Count; i++)
+                    {
+                        var type = tileTypesController.GetRandomType();
+                        var entity = tileFactory.Create(x, config.GridHeight + i, type);
+                        var view = tileFactory.GetView(entity);
+                        newTiles.Add((entity, view, new(x, yList[i])));
+                    }
+                }
+
+                return newTiles;
+            }
+        }
+        #endregion
+
+        #region Events
+        private void OnGridChanged()
+        {
+            RebuildCellTypes();
+            GridChanged?.Invoke();
         }
         #endregion
 
         #region Helpers
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private int Idx(int x, int y) => y * config.GridWidth + x;
         
         public int2 WorldToGridPos(float3 worldPos) => new((int)math.round(worldPos.x), (int)math.round(worldPos.y));
         
         public bool IsValidPosition(int x, int y) => x >= 0 && x < config.GridWidth && y >= 0 && y < config.GridHeight;
 
-        public TileType GetTileTypeAt(int x, int y)
+        public TileType GetTileTypeAt(int x, int y) => cellTypesCache[Idx(x, y)];
+        
+        private void RebuildCellTypes()
         {
             var grid = entityManager.GetBuffer<GridCell>(gridEntity);
-            var cell = grid[Idx(x, y)];
-            if (cell.Tile == Entity.Null)
-                return TileType.None;
 
-            var tileData = entityManager.GetComponentData<TileData>(cell.Tile);
-            return tileData.Type;
+            for (int i = 0; i < grid.Length; i++)
+            {
+                var tile = grid[i].Tile;
+                cellTypesCache[i] = tile == Entity.Null
+                    ? TileType.None
+                    : entityManager.GetComponentData<TileData>(tile).Type;
+            }
         }
         #endregion
     }

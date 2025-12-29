@@ -23,7 +23,11 @@ namespace Match3.Game
             sprite.gameObject.SetActive(false);
             clearAnimation.gameObject.SetActive(false);
 
-            clearAnimation.skeletonDataAsset = tileData.clearAnim;
+            if (clearAnimation.skeletonDataAsset != tileData.clearAnim)
+            {
+                clearAnimation.skeletonDataAsset = tileData.clearAnim;
+                clearAnimation.Initialize(true);
+            }
 
             spriteHandle = Addressables.LoadAssetAsync<Sprite>(tileData.spriteRef);
             spriteHandle.Completed += handle =>
