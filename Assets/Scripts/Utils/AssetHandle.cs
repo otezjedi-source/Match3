@@ -1,33 +1,60 @@
+using System.Threading;
 using Cysharp.Threading.Tasks;
+using UnityEngine;
 using UnityEngine.AddressableAssets;
 using UnityEngine.ResourceManagement.AsyncOperations;
 
 namespace Match3.Utils
 {
-    public class AssetHandle<T>
+    public class AssetHandle<T> where T : Object
     {
         private AssetReference assetRef;
         private AsyncOperationHandle<T> handle;
+        private CancellationTokenSource cts;
 
-        public async UniTask<T> LoadAsync(AssetReference newRef)
+        public async UniTask<T> LoadAsync(AssetReference newRef, CancellationToken ct = default)
         {
-            if (newRef.AssetGUID == assetRef?.AssetGUID && handle.IsValid() && handle.IsDone)
+            if (newRef == null)
+                return null;
+
+            if (assetRef != null && newRef.AssetGUID == assetRef.AssetGUID && handle.IsValid() && handle.IsDone)
                 return handle.Result;
 
-            Release();
+            Cancel();
 
             assetRef = newRef;
-            handle = Addressables.LoadAssetAsync<T>(newRef);
-            await handle;
+            cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
 
-            return handle.Result;
+            handle = Addressables.LoadAssetAsync<T>(newRef);
+
+            try
+            {
+                await handle.ToUniTask(cancellationToken: ct);
+                return handle.Result;
+            }
+            catch
+            {
+                Cancel();
+                return null;
+            }
         }
 
         public void Release()
         {
+            Cancel();
+        }
+
+        private void Cancel()
+        {
+            cts?.Cancel();
+            cts?.Dispose();
+            cts = null;
+
             if (handle.IsValid())
                 Addressables.Release(handle);
+
             handle = default;
+            assetRef = null;
         }
     }
 }

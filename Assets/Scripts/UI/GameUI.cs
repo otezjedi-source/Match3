@@ -1,5 +1,4 @@
 using Match3.Controllers;
-using Match3.Game;
 using UniRx;
 using UnityEngine;
 using VContainer;
@@ -13,14 +12,9 @@ namespace Match3.UI
         [SerializeField] private GameObject grid;
 
         [Inject] private readonly ScoreController scoreController;
-        [Inject] private readonly GameStateMachine stateMachine;
 
         private void Start()
         {
-            stateMachine.OnGameOver
-                .Subscribe(_ => ShowGameOverMenu())
-                .AddTo(this);
-
             ShowGameMenu();
         }
 

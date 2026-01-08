@@ -11,7 +11,7 @@ using UnityEngine.AddressableAssets;
 
 namespace Match3.Game
 {
-    public class Tile : MonoBehaviour
+    public class TileView : MonoBehaviour
     {
         [SerializeField] private SpriteRenderer sprite;
         [SerializeField] private SkeletonAnimation clearAnimation;

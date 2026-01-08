@@ -12,7 +12,7 @@ namespace Match3.Core
     public class GameLifetimeScope : LifetimeScope
      {
         [SerializeField] private Transform gridParent;
-        [SerializeField] private Tile tilePrefab;
+        [SerializeField] private TileView tilePrefab;
         [SerializeField] private GameUI gameUI;
 
         protected override void Configure(IContainerBuilder builder)
@@ -23,11 +23,8 @@ namespace Match3.Core
                 .WithParameter(tilePrefab)
                 .WithParameter(gridParent);
             
-            builder.Register<GridController>(Lifetime.Scoped);
-            builder.Register<MatchController>(Lifetime.Scoped);
-            builder.Register<GameStateMachine>(Lifetime.Scoped);
             builder.Register<InputController>(Lifetime.Scoped);
-            builder.Register<TileTypesController>(Lifetime.Scoped);
+            builder.Register<TileTypeRegistry>(Lifetime.Scoped);
 
             builder.RegisterComponent(gameUI).AsSelf();
             builder.RegisterComponentInHierarchy<MenuGame>();

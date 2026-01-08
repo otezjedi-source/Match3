@@ -10,36 +10,41 @@ namespace Match3.Factories
 {
     public class TileFactory
     {
-        [Inject] private readonly Tile tilePrefab;
+        [Inject] private readonly TileView tilePrefab;
         [Inject] private readonly Transform parent;
         [Inject] private readonly GameConfig config;
-        [Inject] private readonly EntityManager entityManager;
+        [Inject] private readonly EntityManager entityMgr;
 
         private readonly Queue<Entity> pool = new();
-        private readonly Dictionary<Entity, Tile> views = new();
-        private readonly Dictionary<Tile, Entity> entities = new();
 
         public Entity Create(int x, int y, TileType type)
         {
             Entity entity;
-            Tile view;
+            TileView view;
 
             if (pool.Count > 0)
             {
                 entity = pool.Dequeue();
-                view = views[entity];
+                entityMgr.SetComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
+                entityMgr.SetComponentData<TileStateData>(entity, new() { State = TileState.Idle });
+                entityMgr.SetComponentData<TileWorldPos>(entity, new() { Pos = new(x, y, 0) });
+                entityMgr.SetComponentEnabled<TileMove>(entity, false);
+
+                view = GetView(entity);
                 view.gameObject.SetActive(true);
                 view.transform.position = new(x, y);
-                entityManager.SetComponentData(entity, new TileData { Type = type });
             }
             else
             {
-                entity = entityManager.CreateEntity();
+                entity = entityMgr.CreateEntity();
                 view = Object.Instantiate(tilePrefab, new(x, y), Quaternion.identity, parent);
-                entityManager.AddComponentData(entity, new TileData { Type = type });
-                entityManager.AddComponentData(entity, new TileViewData { View = view });
-                views[entity] = view;
-                entities[view] = entity;
+
+                entityMgr.AddComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
+                entityMgr.AddComponentData<TileStateData>(entity, new() { State = TileState.Idle });
+                entityMgr.AddComponentData<TileWorldPos>(entity, new() { Pos = new(x, y, 0) });
+                entityMgr.AddComponentData<TileMove>(entity, new());
+                entityMgr.AddComponentObject(entity, new TileViewData { View = view });
+                entityMgr.SetComponentEnabled<TileMove>(entity, false);
             }
 
             var data = config.TilesData.Find(s => s.type == type);
@@ -59,8 +64,11 @@ namespace Match3.Factories
             pool.Enqueue(entity);
         }
 
-        public Tile GetView(Entity entity) => views.TryGetValue(entity, out var view) ? view : null;
-
-        public Entity GetEntity(Tile view) => entities.TryGetValue(view, out var entity) ? entity : Entity.Null;
+        public TileView GetView(Entity entity)
+        {
+            if (!entityMgr.HasComponent<TileViewData>(entity))
+                return null;
+            return entityMgr.GetComponentObject<TileViewData>(entity)?.View;
+        }
     }
 }

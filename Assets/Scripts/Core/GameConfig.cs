@@ -1,6 +1,6 @@
 using System;
 using System.Collections.Generic;
-using Match3.Game;
+using Match3.ECS.Components;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
 
@@ -15,7 +15,7 @@ namespace Match3.Core
 
         [Header("Game Settings")]
         public int MatchCount = 3;
-        public int ScoreForTile = 10;
+        public int PointsPerTile = 10;
 
         [Header("Timings")]
         public float SwapDuration = 0.3f;

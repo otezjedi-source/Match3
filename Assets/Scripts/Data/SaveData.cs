@@ -8,20 +8,19 @@ namespace Match3.Save
 
         public static SaveData FromJson(string json)
         {
+            if (string.IsNullOrEmpty(json))
+                return new();
+
             try
             {
-                var data = JsonConvert.DeserializeObject<SaveData>(json);
-                return new SaveData { HighScore = data?.HighScore ?? 0 };
+                return JsonConvert.DeserializeObject<SaveData>(json) ?? new();
             }
             catch
             {
-                return new SaveData();
+                return new();
             }
         }
 
-        public string ToJson()
-        {
-            return JsonConvert.SerializeObject(this);
-        }
+        public string ToJson() => JsonConvert.SerializeObject(this);
     }
 }

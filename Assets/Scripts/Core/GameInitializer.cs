@@ -1,6 +1,9 @@
 using System;
 using Match3.Controllers;
-using Match3.Game;
+using Match3.ECS.Components;
+using Match3.ECS.Systems;
+using Match3.Factories;
+using Unity.Entities;
 using VContainer;
 using VContainer.Unity;
 
@@ -8,19 +11,25 @@ namespace Match3.Core
 {
     public class GameInitializer : IStartable, ITickable, IDisposable
     {
-        [Inject] private readonly GridController gridController;
         [Inject] private readonly InputController inputController;
-        [Inject] private readonly GameStateMachine stateMachine;
-        [Inject] private readonly MatchController matchController;
+        [Inject] private readonly ScoreController scoreController;
+        [Inject] private readonly SoundController soundController;
+        [Inject] private readonly TileTypeRegistry tileTypeRegistry;
+        [Inject] private readonly TileFactory tileFactory;
+
+        private World world;
+        private EntityManager entityMgr;
 
         public void Start()
         {
-            gridController.Init();
-            inputController.Init();
+            world = World.DefaultGameObjectInjectionWorld;
+            entityMgr = world.EntityManager;
 
-            int i = 0;
-            while (!matchController.HasPossibleMoves() && ++i < 100)
-                gridController.ResetTiles();
+            CreateManagedRefs();
+            EnableSystems(true);
+            entityMgr.CreateSingleton<GridStartRequest>();
+
+            inputController.Init();
         }
 
         public void Tick()
@@ -30,7 +39,45 @@ namespace Match3.Core
 
         public void Dispose()
         {
-            stateMachine.Dispose();
+            EnableSystems(false);
+        }
+
+        private void CreateManagedRefs()
+        {
+            var query = entityMgr.CreateEntityQuery(typeof(ManagedReferences));
+            if (!query.IsEmpty)
+            {
+                var entity = query.GetSingletonEntity();
+                var refs = entityMgr.GetComponentObject<ManagedReferences>(entity);
+                refs.ScoreController = scoreController;
+                refs.SoundController = soundController;
+                refs.TileTypeRegistry = tileTypeRegistry;
+                refs.TileFactory = tileFactory;
+                return;
+            }
+
+            var newEntity = entityMgr.CreateEntity();
+            entityMgr.AddComponentObject(newEntity, new ManagedReferences
+            {
+                ScoreController = scoreController,
+                SoundController = soundController,
+                TileTypeRegistry = tileTypeRegistry,
+                TileFactory = tileFactory,
+            });
+        }
+
+        private void EnableSystems(bool enabled)
+        {
+            if (world?.IsCreated != true)
+                return;
+
+            var initGroup = world.GetExistingSystemManaged<GameInitSystemGroup>();
+            if (initGroup != null)
+                initGroup.Enabled = enabled;
+
+            var gameGroup = world.GetExistingSystemManaged<GameSystemGroup>();
+            if (gameGroup != null)
+                gameGroup.Enabled = enabled;
         }
     }
 }
