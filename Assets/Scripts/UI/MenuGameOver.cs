@@ -1,9 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Match3.Controllers;
-using Match3.ECS.Components;
 using TMPro;
 using UniRx;
-using Unity.Entities;
 using UnityEngine;
 using UnityEngine.UI;
 using VContainer;
@@ -20,8 +18,8 @@ namespace Match3.UI
         [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly SceneLoader sceneLoader;
         [Inject] private readonly SoundController soundController;
+        [Inject] private readonly GameController gameController;
         [Inject] private readonly GameUI gameUI;
-        [Inject] private readonly EntityManager entityMgr;
 
         public void Start()
         {
@@ -49,7 +47,7 @@ namespace Match3.UI
         private void OnBtnRestartClick()
         {
             soundController.PlayBtnClick();
-            entityMgr.CreateSingleton<GridResetRequest>();
+            gameController.RequestRestart();
             gameUI.ShowGameMenu();
         }
     }

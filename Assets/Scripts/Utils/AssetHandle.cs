@@ -29,7 +29,7 @@ namespace Match3.Utils
 
             try
             {
-                await handle.ToUniTask(cancellationToken: ct);
+                await handle.ToUniTask(cancellationToken: cts.Token);
                 return handle.Result;
             }
             catch

@@ -1,3 +1,5 @@
+using System;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using UnityEngine;
 using UnityEngine.SceneManagement;
@@ -6,29 +8,70 @@ using VContainer.Unity;
 
 namespace Match3.Controllers
 {
-    public class SceneLoader
+    public sealed class SceneLoader : IDisposable
     {
         const string START_SCENE_NAME = "StartScene";
         const string GAME_SCENE_NAME = "GameScene";
 
         [Inject] private readonly LifetimeScope parentScope;
 
-        public async UniTask LoadStartSceneAsync() => await LoadSceneAsync(START_SCENE_NAME);
-        public async UniTask LoadGameSceneAsync() => await LoadSceneAsync(GAME_SCENE_NAME);
+        private CancellationTokenSource cts;
+        private int loadVersion;
+        private bool isLoading;
+
+        public UniTask LoadStartSceneAsync() => LoadSceneAsync(START_SCENE_NAME);
+        public UniTask LoadGameSceneAsync() => LoadSceneAsync(GAME_SCENE_NAME);
 
         private async UniTask LoadSceneAsync(string sceneName)
         {
-            var operation = SceneManager.LoadSceneAsync(sceneName);
-            if (operation == null)
-            {
-                Debug.LogError($"Failed to load scene: {sceneName}");
+            if (isLoading || SceneManager.GetActiveScene().name == sceneName)
                 return;
-            }
 
-            using (LifetimeScope.EnqueueParent(parentScope))
+            CancelLoad();
+
+            cts = new();
+            var newVersion = ++loadVersion;
+            isLoading = true;
+
+            try
             {
-                await operation.ToUniTask();
+                var op = SceneManager.LoadSceneAsync(sceneName);
+                if (op == null)
+                    throw new InvalidOperationException($"Failed to start loading scene: {sceneName}");
+
+                using (LifetimeScope.EnqueueParent(parentScope))
+                {
+                    await op.ToUniTask(cancellationToken: cts.Token);
+                }
+
+                if (newVersion != loadVersion)
+                    return;
             }
+            catch (OperationCanceledException)
+            {
+                Debug.Log($"[SceneLoader] Scene load cancelled: {sceneName}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[SceneLoader] Error loading scene {sceneName}\n{ex}");
+            }
+            finally
+            {
+                if (newVersion == loadVersion)
+                    isLoading = false;
+            }
+        }
+        
+        private void CancelLoad()
+        {
+            cts?.Cancel();
+            cts?.Dispose();
+            cts = null;
+        }
+
+        public void Dispose()
+        {
+            CancelLoad();
         }
     }
 }

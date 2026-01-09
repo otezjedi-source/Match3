@@ -12,10 +12,16 @@ namespace Match3.UI
         [SerializeField] private GameObject grid;
 
         [Inject] private readonly ScoreController scoreController;
+        [Inject] private readonly GameController gameController;
 
         private void Start()
         {
             ShowGameMenu();
+
+            gameController.IsGameOver
+                .Where(isGameOver => isGameOver)
+                .Subscribe(_ => ShowGameOverMenu())
+                .AddTo(this);
         }
 
         public void ShowGameMenu()

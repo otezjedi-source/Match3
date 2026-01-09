@@ -22,8 +22,9 @@ namespace Match3.Core
             builder.Register<TileFactory>(Lifetime.Scoped)
                 .WithParameter(tilePrefab)
                 .WithParameter(gridParent);
-            
+
             builder.Register<InputController>(Lifetime.Scoped);
+            builder.Register<GameController>(Lifetime.Scoped);
             builder.Register<TileTypeRegistry>(Lifetime.Scoped);
 
             builder.RegisterComponent(gameUI).AsSelf();

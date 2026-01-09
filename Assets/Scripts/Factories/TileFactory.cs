@@ -55,9 +55,15 @@ namespace Match3.Factories
 
         public void Return(Entity entity)
         {
+            if (!entityMgr.Exists(entity))
+                return;
+
             var view = GetView(entity);
             if (view == null)
+            {
+                entityMgr.DestroyEntity(entity);
                 return;
+            }
 
             view.Clear();
             view.gameObject.SetActive(false);

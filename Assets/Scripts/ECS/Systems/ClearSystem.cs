@@ -1,3 +1,4 @@
+using System;
 using Match3.ECS.Components;
 using Match3.Game;
 using Unity.Collections;
@@ -116,8 +117,15 @@ namespace Match3.ECS.Systems
             try
             {
                 await view.ClearAnimationAsync();
+                Clear();
             }
-            finally
+            catch (OperationCanceledException) { }
+            catch (Exception)
+            {
+                Clear();
+            }
+
+            void Clear()
             {
                 if (entityMgr.Exists(entity))
                 {

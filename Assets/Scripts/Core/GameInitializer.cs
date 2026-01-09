@@ -27,7 +27,7 @@ namespace Match3.Core
 
             CreateManagedRefs();
             EnableSystems(true);
-            entityMgr.CreateSingleton<GridStartRequest>();
+            RequestStart();
 
             inputController.Init();
         }
@@ -78,6 +78,15 @@ namespace Match3.Core
             var gameGroup = world.GetExistingSystemManaged<GameSystemGroup>();
             if (gameGroup != null)
                 gameGroup.Enabled = enabled;
+        }
+
+        private void RequestStart()
+        {
+            var query = entityMgr.CreateEntityQuery(typeof(GridStartRequest));
+            if (!query.IsEmpty)
+                return;
+
+            entityMgr.CreateSingleton<GridStartRequest>();
         }
     }
 }

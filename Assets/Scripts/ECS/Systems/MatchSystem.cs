@@ -11,13 +11,24 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(SwapCompleteSystem))]
     public partial struct MatchSystem : ISystem
     {
+        private NativeHashSet<int2> matchesCache;
+
         [BurstCompile]
-        public readonly void OnCreate(ref SystemState state)
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<MatchConfig>();
             state.RequireForUpdate<TimingConfig>();
+
+            matchesCache = new(64, Allocator.Persistent);
+        }
+
+        [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            if (matchesCache.IsCreated)
+                matchesCache.Dispose();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -33,14 +44,16 @@ namespace Match3.ECS.Systems
             var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
             var matchResults = SystemAPI.GetBuffer<MatchResult>(gridEntity);
 
-            var matches = new NativeHashSet<int2>(gridConfig.CellCount, Allocator.Temp);
-            ScanLines(matches, typeCache.AsNativeArray(), gridConfig, matchConfig, true);
-            ScanLines(matches, typeCache.AsNativeArray(), gridConfig, matchConfig, false);
+            matchesCache.Clear();
+            if (matchesCache.Capacity < gridConfig.CellCount)
+                matchesCache.Capacity = gridConfig.CellCount;
+
+            ScanLines(matchesCache, typeCache.AsNativeArray(), gridConfig, matchConfig, true);
+            ScanLines(matchesCache, typeCache.AsNativeArray(), gridConfig, matchConfig, false);
 
             matchResults.Clear();
-            foreach (var pos in matches)
+            foreach (var pos in matchesCache)
                 matchResults.Add(new() { Pos = pos });
-            matches.Dispose();
 
             if (matchResults.Length > 0)
             {
@@ -49,7 +62,6 @@ namespace Match3.ECS.Systems
                 gameState = SystemAPI.GetSingletonRW<GameState>();
                 gameState.ValueRW.Phase = GamePhase.Clear;
                 gameState.ValueRW.PhaseTimer = timingConfig.MatchDelay;
-
                 return;
             }
 

@@ -1,3 +1,4 @@
+using System;
 using Match3.ECS.Components;
 using Unity.Collections;
 using Unity.Entities;
@@ -53,19 +54,26 @@ namespace Match3.ECS.Systems
                 refs.SoundController.PlayDrop();
         }
 
-        private static async void RunDropAnimation(Game.TileView view, Entity entity, EntityManager em)
+        private static async void RunDropAnimation(Game.TileView view, Entity entity, EntityManager entityMgr)
         {
             try
             {
                 await view.DropAnimationAsync();
+                Clear();
             }
-            finally
+            catch (OperationCanceledException) { }
+            catch (Exception)
             {
-                if (em.Exists(entity))
+                Clear();
+            }
+
+            void Clear()
+            {
+                if (entityMgr.Exists(entity))
                 {
-                    if (em.HasComponent<DropTag>(entity))
-                        em.RemoveComponent<DropTag>(entity);
-                    em.SetComponentData(entity, new TileStateData { State = TileState.Idle });
+                    if (entityMgr.HasComponent<DropTag>(entity))
+                        entityMgr.RemoveComponent<DropTag>(entity);
+                    entityMgr.SetComponentData(entity, new TileStateData { State = TileState.Idle });
                 }
             }
         }
