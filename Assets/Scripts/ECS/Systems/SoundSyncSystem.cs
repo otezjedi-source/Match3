@@ -11,6 +11,7 @@ namespace Match3.ECS.Systems
         public readonly void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ManagedReferences>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         public readonly void OnUpdate(ref SystemState state)
@@ -19,16 +20,14 @@ namespace Match3.ECS.Systems
             if (refs?.SoundController == null)
                 return;
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (request, entity) in SystemAPI.Query<RefRO<PlaySoundRequest>>().WithEntityAccess())
             {
                 Play(refs.SoundController, request.ValueRO.Type);
                 ecb.DestroyEntity(entity);
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
         
         private readonly void Play(SoundController soundController, SoundType type)

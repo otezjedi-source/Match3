@@ -14,6 +14,7 @@ namespace Match3.Core
         [Inject] private readonly InputController inputController;
         [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly SoundController soundController;
+        [Inject] private readonly GameController gameController;
         [Inject] private readonly TileTypeRegistry tileTypeRegistry;
         [Inject] private readonly TileFactory tileFactory;
 
@@ -27,7 +28,7 @@ namespace Match3.Core
 
             CreateManagedRefs();
             EnableSystems(true);
-            RequestStart();
+            gameController.RequestStart();
 
             inputController.Init();
         }
@@ -78,15 +79,6 @@ namespace Match3.Core
             var gameGroup = world.GetExistingSystemManaged<GameSystemGroup>();
             if (gameGroup != null)
                 gameGroup.Enabled = enabled;
-        }
-
-        private void RequestStart()
-        {
-            var query = entityMgr.CreateEntityQuery(typeof(GridStartRequest));
-            if (!query.IsEmpty)
-                return;
-
-            entityMgr.CreateSingleton<GridStartRequest>();
         }
     }
 }

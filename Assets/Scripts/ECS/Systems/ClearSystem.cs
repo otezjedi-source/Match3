@@ -15,6 +15,7 @@ namespace Match3.ECS.Systems
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<MatchConfig>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
             matchQuery = SystemAPI.QueryBuilder().WithAll<MatchTag>().Build();
@@ -44,7 +45,8 @@ namespace Match3.ECS.Systems
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             int clearCount = 0;
 
             foreach (var (tileData, viewData, entity) in 
@@ -76,9 +78,6 @@ namespace Match3.ECS.Systems
 
             foreach (var (_, entity) in SystemAPI.Query<RefRO<SwapRequest>>().WithEntityAccess())
                 ecb.DestroyEntity(entity);
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 
@@ -97,7 +96,8 @@ namespace Match3.ECS.Systems
             if (refs?.TileFactory == null)
                 return;
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (_, entity) in SystemAPI.Query<ClearDoneEvent>()
                 .WithAll<ClearTag, MatchTag>().WithEntityAccess())
@@ -110,9 +110,6 @@ namespace Match3.ECS.Systems
                 ecb.RemoveComponent<MatchTag>(entity);
                 refs.TileFactory.Return(entity);
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 }

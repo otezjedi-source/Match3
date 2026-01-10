@@ -20,6 +20,7 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<MatchConfig>();
             state.RequireForUpdate<TimingConfig>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             matchesCache = new(64, Allocator.Persistent);
         }
@@ -132,7 +133,8 @@ namespace Match3.ECS.Systems
         {
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
             var matchLookup = SystemAPI.GetComponentLookup<MatchTag>(true);
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var match in matches)
             {
@@ -141,9 +143,6 @@ namespace Match3.ECS.Systems
                 if (tile != Entity.Null && !matchLookup.HasComponent(tile))
                     ecb.AddComponent<MatchTag>(tile);
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
 
         private bool HandleSwaps(
@@ -153,7 +152,8 @@ namespace Match3.ECS.Systems
             TimingConfig timingConfig)
         {
             bool isReverting = false;
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (request, entity) in SystemAPI.Query<RefRW<SwapRequest>>().WithEntityAccess())
             {
@@ -166,9 +166,6 @@ namespace Match3.ECS.Systems
                 RevertSwap(ref state, ref request.ValueRW, gridEntity, gridConfig, timingConfig);
                 isReverting = true;   
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
             return isReverting;
         }
         

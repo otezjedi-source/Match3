@@ -10,6 +10,7 @@ namespace Match3.ECS.Systems
         public readonly void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ManagedReferences>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
         public readonly void OnUpdate(ref SystemState state)
@@ -33,7 +34,8 @@ namespace Match3.ECS.Systems
 
         private readonly void StartDropAnims(ref SystemState state, ManagedReferences refs)
         {
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             bool playSound = false;
 
             foreach (var (worldPos, stateData, viewData, entity) in
@@ -55,16 +57,14 @@ namespace Match3.ECS.Systems
                 playSound = true;
             }
 
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
-
             if (playSound && refs?.SoundController != null)
                 refs.SoundController.PlayDrop();
         }
 
         private readonly void CompleteDropAnims(ref SystemState state)
         {
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (_, entity) in
                 SystemAPI.Query<RefRO<DropDoneEvent>>().WithAll<DropTag>().WithEntityAccess())
@@ -74,9 +74,6 @@ namespace Match3.ECS.Systems
                 ecb.RemoveComponent<DropTag>(entity);
                 ecb.RemoveComponent<DropDoneEvent>(entity);
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 }

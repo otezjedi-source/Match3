@@ -1,3 +1,4 @@
+using System;
 using Match3.Core;
 using Match3.ECS.Components;
 using Unity.Entities;
@@ -22,6 +23,8 @@ namespace Match3.Controllers
         public void Init()
         {
             mainCamera = Camera.main;
+            if (mainCamera == null)
+                throw new InvalidOperationException("Main camera not found");
             gameStateQuery = entityMgr.CreateEntityQuery(typeof(GameState));
         }
 

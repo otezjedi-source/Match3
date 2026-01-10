@@ -225,11 +225,18 @@ namespace Match3.Game
         
         private void Notify<T>() where T : unmanaged, IComponentData
         {
-            if (entity != Entity.Null && !entityMgr.Exists(entity))
+            if (entity == Entity.Null || !entityMgr.Exists(entity))
                 return;
 
-            if (!entityMgr.HasComponent<T>(entity))
-                entityMgr.AddComponentData(entity, default(T));
+            try
+            {
+                if (!entityMgr.HasComponent<T>(entity))
+                    entityMgr.AddComponentData(entity, default(T));
+            }
+            catch (Exception ex)
+            {
+                Debug.LogException(ex);
+            }
         }
         #endregion
     }

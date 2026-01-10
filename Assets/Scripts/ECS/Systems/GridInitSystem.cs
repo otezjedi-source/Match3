@@ -82,13 +82,31 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(GridBufferInitSystem))]
     public partial struct GridTilesInitSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private NativeList<TileType> allowedTypes;
+        private NativeList<Entity> gridTilesCache;
+        private NativeList<TileType> gridTypesCache;
+
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<MatchConfig>();
             state.RequireForUpdate<ManagedReferences>();
             state.RequireForUpdate<GridStartRequest>();
+
+            allowedTypes = new(8, Allocator.Persistent);
+            gridTilesCache = new(64, Allocator.Persistent);
+            gridTypesCache = new(64, Allocator.Persistent);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            if (allowedTypes.IsCreated)
+                allowedTypes.Dispose();
+            if (gridTilesCache.IsCreated)
+                gridTilesCache.Dispose();
+            if (gridTypesCache.IsCreated)
+                gridTypesCache.Dispose();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -107,29 +125,27 @@ namespace Match3.ECS.Systems
             int attempts = 0;
             while (attempts < gridConfig.MaxInitAttempts)
             {
-                if (PossibleMovesChecker.HasPossibleMoves(ref typeCache, ref gridConfig, ref matchConfig))
+                if (PossibleMovesChecker.CheckMoves(gridTypesCache, ref gridConfig, ref matchConfig))
                     break;
 
                 GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig);
                 ++attempts;
             }
 
-            var tiles = new Entity[gridConfig.CellCount];
-            var types = new TileType[gridConfig.CellCount];
-            for (int i = 0; i < typeCache.Length; i++)
-                types[i] = typeCache[i].Type;
+            gridTilesCache.Clear();
             for (int y = 0; y < gridConfig.Height; y++)
             {
                 for (int x = 0; x < gridConfig.Width; x++)
                 {
                     int idx = gridConfig.GetIndex(x, y);
-                    tiles[idx] = refs.TileFactory.Create(x, y, types[idx]);
+                    var tile = refs.TileFactory.Create(x, y, gridTypesCache[idx]);
+                    gridTilesCache.Add(tile);
                 }
             }
 
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
             for (int i = 0; i < gridCells.Length; i++)
-                gridCells[i] = new() { Tile = tiles[i] };
+                gridCells[i] = new() { Tile = gridTilesCache[i] };
 
             var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
             dirtyFlag.ValueRW.IsDirty = true;
@@ -143,13 +159,11 @@ namespace Match3.ECS.Systems
 
         private readonly void GenerateTypes(NativeArray<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig config)
         {
-            var allowed = new NativeList<TileType>(types.Length, Allocator.Temp);
-
             for (int y = 0; y < config.Height; y++)
             {
                 for (int x = 0; x < config.Width; x++)
                 {
-                    allowed.Clear();
+                    allowedTypes.Clear();
 
                     foreach (var t in types)
                     {
@@ -169,16 +183,18 @@ namespace Match3.ECS.Systems
                                 continue;
                         }
 
-                        allowed.Add(t);
+                        allowedTypes.Add(t);
                     }
 
                     int idx = config.GetIndex(x, y);
-                    int rnd = Random.Range(0, allowed.Length);
-                    typeCache[idx] = new() { Type = allowed[rnd] };
+                    int rnd = Random.Range(0, allowedTypes.Length);
+                    typeCache[idx] = new() { Type = allowedTypes[rnd] };
                 }
             }
 
-            allowed.Dispose();
+            gridTypesCache.Clear();
+            for (int i = 0; i < typeCache.Length; i++)
+                gridTypesCache.Add(typeCache[i].Type);
         }
     }
 }

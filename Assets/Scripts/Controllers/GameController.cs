@@ -20,6 +20,7 @@ namespace Match3.Controllers
 
         public void Init()
         {
+            ClearQueries();
             CacheQuery<GameState>();
             CacheQuery<GameOverEvent>();
             CacheQuery<GridStartRequest>();

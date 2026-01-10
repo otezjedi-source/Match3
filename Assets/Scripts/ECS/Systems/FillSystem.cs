@@ -8,12 +8,26 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(FallSystem))]
     public partial struct FillSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private NativeList<(int x, int y, int spawnY)> emptyCells;
+        private NativeList<(int idx, Entity tile)> newTiles;
+
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<TimingConfig>();
             state.RequireForUpdate<ManagedReferences>();
+
+            emptyCells = new(64, Allocator.Persistent);
+            newTiles = new(64, Allocator.Persistent);
+        }
+
+        public void OnDestroy(ref SystemState state)
+        {
+            if (emptyCells.IsCreated)
+                emptyCells.Dispose();
+            if (newTiles.IsCreated)
+                newTiles.Dispose();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -31,7 +45,7 @@ namespace Match3.ECS.Systems
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
 
-            var emptyCells = new NativeList<(int x, int y, int spawnY)>(Allocator.Temp);
+            emptyCells.Clear();
             for (int x = 0; x < gridConfig.Width; x++)
             {
                 int count = 0;
@@ -48,12 +62,11 @@ namespace Match3.ECS.Systems
 
             if (emptyCells.Length == 0)
             {
-                emptyCells.Dispose();
                 SystemAPI.GetSingletonRW<GameState>().ValueRW.Phase = GamePhase.Fall;
                 return;
             }
 
-            var newTiles = new NativeList<(int idx, Entity tile)>(emptyCells.Length, Allocator.Temp);
+            newTiles.Clear();
             for (int i = 0; i < emptyCells.Length; i++)
             {
                 var (x, y, spawnY) = emptyCells[i];
@@ -78,9 +91,6 @@ namespace Match3.ECS.Systems
 
             var dirtyFlag = SystemAPI.GetSingletonRW<GridDirtyFlag>();
             dirtyFlag.ValueRW.IsDirty = true;
-
-            emptyCells.Dispose();
-            newTiles.Dispose();
 
             SystemAPI.GetSingletonRW<GameState>().ValueRW.Phase = GamePhase.Fall;
         }

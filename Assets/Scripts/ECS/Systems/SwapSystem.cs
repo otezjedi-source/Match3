@@ -18,6 +18,7 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<TimingConfig>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             playerSwapRequestQuery = SystemAPI.QueryBuilder().WithAll<PlayerSwapRequest>().Build();
         }
@@ -37,7 +38,8 @@ namespace Match3.ECS.Systems
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (request, entity) in SystemAPI.Query<RefRO<PlayerSwapRequest>>().WithEntityAccess())
             {
@@ -90,9 +92,6 @@ namespace Match3.ECS.Systems
 
                 ecb.DestroyEntity(entity);
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 
@@ -105,6 +104,7 @@ namespace Match3.ECS.Systems
         public readonly void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
         public readonly void OnUpdate(ref SystemState state)
@@ -113,7 +113,8 @@ namespace Match3.ECS.Systems
             if (gameState.ValueRO.Phase != GamePhase.Swap)
                 return;
 
-            var ecb = new EntityCommandBuffer(Allocator.Temp);
+            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
+            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (request, entity) in SystemAPI.Query<RefRW<SwapRequest>>().WithEntityAccess())
             {
@@ -133,9 +134,6 @@ namespace Match3.ECS.Systems
                 else
                     gameState.ValueRW.Phase = GamePhase.Match;
             }
-
-            ecb.Playback(state.EntityManager);
-            ecb.Dispose();
         }
     }
 }
