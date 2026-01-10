@@ -1,4 +1,5 @@
 using System;
+using Cysharp.Threading.Tasks;
 using Match3.Controllers;
 using Match3.ECS.Components;
 using Match3.ECS.Systems;
@@ -15,6 +16,7 @@ namespace Match3.Core
         [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly SoundController soundController;
         [Inject] private readonly GameController gameController;
+        [Inject] private readonly LoadingController loadingController;
         [Inject] private readonly TileTypeRegistry tileTypeRegistry;
         [Inject] private readonly TileFactory tileFactory;
 
@@ -23,16 +25,28 @@ namespace Match3.Core
 
         public void Start()
         {
-            world = World.DefaultGameObjectInjectionWorld;
-            entityMgr = world.EntityManager;
+            InitAsync().Forget();
+        }
+        
+        private async UniTaskVoid InitAsync()
+        {
+            using (loadingController.BeginLoading())
+            {
+                world = World.DefaultGameObjectInjectionWorld;
+                entityMgr = world.EntityManager;
 
-            CreateManagedRefs();
-            EnableSystems(true);
-            
-            inputController.Init();
-            gameController.Init();
+                CreateManagedRefs();
+                EnableSystems(true);
 
-            gameController.RequestStart();
+                inputController.Init();
+                gameController.Init();
+
+                gameController.RequestStart();
+
+                var query = entityMgr.CreateEntityQuery(typeof(GridStartRequest));
+                await UniTask.WaitUntil(() => query.IsEmpty);
+                query.Dispose();
+            }
         }
 
         public void Tick()

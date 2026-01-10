@@ -8,6 +8,7 @@ namespace Match3.Core
     public class StartInitializer : IStartable
     {
         [Inject] private readonly ScoreController scoreController;
+        [Inject] private readonly LoadingController loadingController;
         
         public void Start()
         {
@@ -16,7 +17,10 @@ namespace Match3.Core
 
         private async UniTaskVoid InitializeAsync()
         {
-            await scoreController.InitAsync();
+            using (loadingController.BeginLoading())
+            {
+                await scoreController.InitAsync();
+            }
         }
     }
 }

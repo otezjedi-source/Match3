@@ -9,3 +9,5 @@ Temp
 UserSettings
 Assets/Plugins/UniRx/Examples
 Examples.meta
+Assets/SceneDependencyCache
+SceneDependencyCache.meta

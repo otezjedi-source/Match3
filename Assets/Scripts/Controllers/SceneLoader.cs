@@ -14,6 +14,7 @@ namespace Match3.Controllers
         const string GAME_SCENE_NAME = "GameScene";
 
         [Inject] private readonly LifetimeScope parentScope;
+        [Inject] private readonly LoadingController loadingController;
 
         private CancellationTokenSource cts;
         private readonly SemaphoreSlim semaphore = new(1, 1);
@@ -28,33 +29,36 @@ namespace Match3.Controllers
 
             await semaphore.WaitAsync();
 
-            CancellationTokenSource opCts = null;
-
-            try
+            using (loadingController.BeginLoading())
             {
-                CancelLoad();
-                opCts = cts = new();
+                CancellationTokenSource opCts = null;
 
-                var op = SceneManager.LoadSceneAsync(sceneName);
-                if (op == null)
-                    throw new InvalidOperationException($"Failed to start loading scene: {sceneName}");
-
-                using (LifetimeScope.EnqueueParent(parentScope))
+                try
                 {
-                    await op.ToUniTask(cancellationToken: opCts.Token);
+                    CancelLoad();
+                    opCts = cts = new();
+
+                    var op = SceneManager.LoadSceneAsync(sceneName);
+                    if (op == null)
+                        throw new InvalidOperationException($"Failed to start loading scene: {sceneName}");
+
+                    using (LifetimeScope.EnqueueParent(parentScope))
+                    {
+                        await op.ToUniTask(cancellationToken: opCts.Token);
+                    }
                 }
-            }
-            catch (OperationCanceledException)
-            {
-                Debug.Log($"[SceneLoader] Scene load cancelled: {sceneName}");
-            }
-            catch (Exception ex)
-            {
-                Debug.LogError($"[SceneLoader] Error loading scene {sceneName}\n{ex}");
-            }
-            finally
-            {
-                semaphore.Release();
+                catch (OperationCanceledException)
+                {
+                    Debug.Log($"[SceneLoader] Scene load cancelled: {sceneName}");
+                }
+                catch (Exception ex)
+                {
+                    Debug.LogError($"[SceneLoader] Error loading scene {sceneName}\n{ex}");
+                }
+                finally
+                {
+                    semaphore.Release();
+                }
             }
         }
         
