@@ -1,6 +1,5 @@
 using Match3.Controllers;
 using Match3.ECS.Components;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace Match3.ECS.Systems
@@ -34,6 +33,9 @@ namespace Match3.ECS.Systems
         {
             switch (type)
             {
+                case SoundType.Swap:
+                    soundController.PlaySwap();
+                    break;
                 case SoundType.Match:
                     soundController.PlayMatch();
                     break;

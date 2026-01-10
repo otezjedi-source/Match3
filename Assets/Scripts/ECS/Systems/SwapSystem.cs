@@ -41,6 +41,8 @@ namespace Match3.ECS.Systems
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
 
+            bool playSound = false;
+
             foreach (var (request, entity) in SystemAPI.Query<RefRO<PlayerSwapRequest>>().WithEntityAccess())
             {
                 var posA = request.ValueRO.PosA;
@@ -74,6 +76,7 @@ namespace Match3.ECS.Systems
 
                 TileMoveHelper.Start(state.EntityManager, tileA, new(posB, 0), timingConfig.SwapDuration, TileState.Swap);
                 TileMoveHelper.Start(state.EntityManager, tileB, new(posA, 0), timingConfig.SwapDuration, TileState.Swap);
+                playSound = true;
 
                 var swapEntity = ecb.CreateEntity();
                 ecb.AddComponent(swapEntity, new SwapRequest
@@ -91,6 +94,12 @@ namespace Match3.ECS.Systems
                 dirtyFlag.ValueRW.IsDirty = true;
 
                 ecb.DestroyEntity(entity);
+            }
+
+            if (playSound)
+            {
+                var soundEntity = ecb.CreateEntity();
+                ecb.AddComponent(soundEntity, new PlaySoundRequest { Type = SoundType.Swap });
             }
         }
     }

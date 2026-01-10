@@ -14,6 +14,11 @@ namespace Match3.Controllers
             audioSource.PlayOneShot(config.ButtonClickSound);
         }
 
+        public void PlaySwap()
+        {
+            audioSource.PlayOneShot(config.SwapSound);
+        }
+
         public void PlayMatch()
         {
             audioSource.PlayOneShot(config.MatchSound);

@@ -29,6 +29,7 @@ namespace Match3.Core
 
         [Header("Sounds")]
         public AudioClip ButtonClickSound;
+        public AudioClip SwapSound;
         public AudioClip MatchSound;
         public AudioClip DropSound;
 
