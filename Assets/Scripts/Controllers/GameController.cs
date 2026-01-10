@@ -85,6 +85,9 @@ namespace Match3.Controllers
 
         private void ClearQueries()
         {
+            if (World.DefaultGameObjectInjectionWorld?.IsCreated != true)
+                return;
+                
             foreach (var query in queryCache.Values)
             {
                 if (!query.Equals(default))

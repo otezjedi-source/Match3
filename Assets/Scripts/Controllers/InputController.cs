@@ -30,6 +30,9 @@ namespace Match3.Controllers
 
         public void Dispose()
         {
+            if (World.DefaultGameObjectInjectionWorld?.IsCreated != true)
+                return;
+                
             if (!gameStateQuery.Equals(default))
                 gameStateQuery.Dispose();
         }

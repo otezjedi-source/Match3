@@ -83,6 +83,9 @@ namespace Match3.Factories
 
         public void Dispose()
         {
+            if (World.DefaultGameObjectInjectionWorld?.IsCreated != true)
+                return;
+            
             var query = entityMgr.CreateEntityQuery(typeof(TileData));
             entityMgr.DestroyEntity(query);
             query.Dispose();
