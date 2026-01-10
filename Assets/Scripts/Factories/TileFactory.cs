@@ -33,11 +33,13 @@ namespace Match3.Factories
                 view = GetView(entity);
                 view.gameObject.SetActive(true);
                 view.transform.position = new(x, y);
+                view.Bind(entityMgr, entity);
             }
             else
             {
                 entity = entityMgr.CreateEntity();
                 view = Object.Instantiate(tilePrefab, new(x, y), Quaternion.identity, parent);
+                view.Bind(entityMgr, entity);
 
                 entityMgr.AddComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
                 entityMgr.AddComponentData<TileStateData>(entity, new() { State = TileState.Idle });

@@ -13,6 +13,7 @@ namespace Match3.ECS.Authoring
             {
                 Width = authoring.config.GridWidth,
                 Height = authoring.config.GridHeight,
+                MaxInitAttempts = authoring.config.MaxGridInitAttempts,
             });
 
             AddComponent<MatchConfig>(entity, new()

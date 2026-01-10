@@ -8,12 +8,20 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(ClearCompleteSystem))]
     public partial struct FallSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private EntityQuery clearQuery;
+        private EntityQuery movingQuery;
+        private EntityQuery dropQuery;
+
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<TimingConfig>();
             state.RequireForUpdate<ManagedReferences>();
+
+            clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
+            movingQuery = SystemAPI.QueryBuilder().WithAll<TileMove>().Build();
+            dropQuery = SystemAPI.QueryBuilder().WithAll<DropTag>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -22,15 +30,10 @@ namespace Match3.ECS.Systems
             if (phase != GamePhase.Fall)
                 return;
 
-            var clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
             if (!clearQuery.IsEmpty)
                 return;
-
-            var movingQuery = SystemAPI.QueryBuilder().WithAll<TileMove>().Build();
             if (!movingQuery.IsEmpty)
                 return;
-
-            var dropQuery = SystemAPI.QueryBuilder().WithAll<DropTag>().Build();
             if (!dropQuery.IsEmpty)
                 return;
 

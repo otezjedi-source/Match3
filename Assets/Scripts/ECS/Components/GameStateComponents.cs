@@ -34,8 +34,6 @@ namespace Match3.ECS.Components
         public Entity TileB;
         public int2 PosA;
         public int2 PosB;
-        public float Duration;
-        public float Elapsed;
         public bool IsReverting;
     }
 

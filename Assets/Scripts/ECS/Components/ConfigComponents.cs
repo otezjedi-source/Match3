@@ -4,11 +4,12 @@ using Unity.Mathematics;
 namespace Match3.ECS.Components
 {
     public struct GameConfigTag : IComponentData { }
-    
+
     public struct GridConfig : IComponentData
     {
         public int Width;
         public int Height;
+        public int MaxInitAttempts;
 
         public readonly int CellCount => Width * Height;
         public readonly int GetIndex(int x, int y) => y * Width + x;

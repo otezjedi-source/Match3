@@ -12,6 +12,7 @@ namespace Match3.Core
         [Header("Grid Settings")]
         public int GridWidth = 5;
         public int GridHeight = 9;
+        public int MaxGridInitAttempts = 100;
 
         [Header("Game Settings")]
         public int MatchCount = 3;

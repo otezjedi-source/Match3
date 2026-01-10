@@ -16,36 +16,33 @@ namespace Match3.Controllers
         [Inject] private readonly LifetimeScope parentScope;
 
         private CancellationTokenSource cts;
-        private int loadVersion;
-        private bool isLoading;
+        private readonly SemaphoreSlim semaphore = new(1, 1);
 
         public UniTask LoadStartSceneAsync() => LoadSceneAsync(START_SCENE_NAME);
         public UniTask LoadGameSceneAsync() => LoadSceneAsync(GAME_SCENE_NAME);
 
         private async UniTask LoadSceneAsync(string sceneName)
         {
-            if (isLoading || SceneManager.GetActiveScene().name == sceneName)
+            if (SceneManager.GetActiveScene().name == sceneName)
                 return;
 
-            CancelLoad();
+            await semaphore.WaitAsync();
 
-            cts = new();
-            var newVersion = ++loadVersion;
-            isLoading = true;
+            CancellationTokenSource opCts = null;
 
             try
             {
+                CancelLoad();
+                opCts = cts = new();
+
                 var op = SceneManager.LoadSceneAsync(sceneName);
                 if (op == null)
                     throw new InvalidOperationException($"Failed to start loading scene: {sceneName}");
 
                 using (LifetimeScope.EnqueueParent(parentScope))
                 {
-                    await op.ToUniTask(cancellationToken: cts.Token);
+                    await op.ToUniTask(cancellationToken: opCts.Token);
                 }
-
-                if (newVersion != loadVersion)
-                    return;
             }
             catch (OperationCanceledException)
             {
@@ -57,8 +54,7 @@ namespace Match3.Controllers
             }
             finally
             {
-                if (newVersion == loadVersion)
-                    isLoading = false;
+                semaphore.Release();
             }
         }
         
@@ -72,6 +68,7 @@ namespace Match3.Controllers
         public void Dispose()
         {
             CancelLoad();
+            semaphore.Dispose();
         }
     }
 }

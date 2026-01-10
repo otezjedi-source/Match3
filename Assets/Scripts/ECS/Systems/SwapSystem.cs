@@ -10,12 +10,16 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(TileMoveSystem))]
     public partial struct SwapSystem : ISystem
     {
+        private EntityQuery playerSwapRequestQuery;
+
         [BurstCompile]
-        public readonly void OnCreate(ref SystemState state)
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<TimingConfig>();
+
+            playerSwapRequestQuery = SystemAPI.QueryBuilder().WithAll<PlayerSwapRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -23,8 +27,8 @@ namespace Match3.ECS.Systems
             var gameState = SystemAPI.GetSingletonRW<GameState>();
             if (gameState.ValueRO.Phase != GamePhase.Idle)
             {
-                var query = SystemAPI.QueryBuilder().WithAll<PlayerSwapRequest>().Build();
-                state.EntityManager.DestroyEntity(query);
+                if (!playerSwapRequestQuery.IsEmpty)
+                    state.EntityManager.DestroyEntity(playerSwapRequestQuery);
                 return;
             }
 
@@ -76,8 +80,6 @@ namespace Match3.ECS.Systems
                     TileB = tileB,
                     PosA = posA,
                     PosB = posB,
-                    Duration = timingConfig.SwapDuration,
-                    Elapsed = 0,
                     IsReverting = false,
                 });
 

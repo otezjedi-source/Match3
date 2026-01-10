@@ -102,24 +102,22 @@ namespace Match3.ECS.Systems
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
             var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity).AsNativeArray();
 
-            var types = new NativeArray<TileType>(gridConfig.CellCount, Allocator.Temp);
-            GenerateTypes(types, refs.TileTypeRegistry.All, gridConfig);
-            for (int i = 0; i < types.Length; i++)
-                typeCache[i] = new() { Type = types[i] };
+            GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig);
             
             int attempts = 0;
-            while (attempts < 100)
+            while (attempts < gridConfig.MaxInitAttempts)
             {
                 if (PossibleMovesChecker.HasPossibleMoves(ref typeCache, ref gridConfig, ref matchConfig))
                     break;
 
-                GenerateTypes(types, refs.TileTypeRegistry.All, gridConfig);
-                for (int i = 0; i < types.Length; i++)
-                    typeCache[i] = new() { Type = types[i] };
+                GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig);
                 ++attempts;
             }
 
             var tiles = new Entity[gridConfig.CellCount];
+            var types = new TileType[gridConfig.CellCount];
+            for (int i = 0; i < typeCache.Length; i++)
+                types[i] = typeCache[i].Type;
             for (int y = 0; y < gridConfig.Height; y++)
             {
                 for (int x = 0; x < gridConfig.Width; x++)
@@ -128,8 +126,6 @@ namespace Match3.ECS.Systems
                     tiles[idx] = refs.TileFactory.Create(x, y, types[idx]);
                 }
             }
-
-            types.Dispose();
 
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
             for (int i = 0; i < gridCells.Length; i++)
@@ -145,7 +141,7 @@ namespace Match3.ECS.Systems
             state.EntityManager.DestroyEntity(request);
         }
 
-        private readonly void GenerateTypes(NativeArray<TileType> result, ReadOnlySpan<TileType> types, GridConfig config)
+        private readonly void GenerateTypes(NativeArray<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig config)
         {
             var allowed = new NativeList<TileType>(types.Length, Allocator.Temp);
 
@@ -157,17 +153,28 @@ namespace Match3.ECS.Systems
 
                     foreach (var t in types)
                     {
-                        if (x >= 2 && t == result[config.GetIndex(x - 1, y)] && t == result[config.GetIndex(x - 2, y)])
-                            continue;
-                        if (y >= 2 && t == result[config.GetIndex(x, y - 1)] && t == result[config.GetIndex(x, y - 2)])
-                            continue;
+                        if (x >= 2)
+                        {
+                            var t1 = typeCache[config.GetIndex(x - 1, y)].Type;
+                            var t2 = typeCache[config.GetIndex(x - 2, y)].Type;
+                            if (t == t1 && t == t2)
+                                continue;
+                        }
+
+                        if (y >= 2)
+                        {
+                            var t1 = typeCache[config.GetIndex(x, y - 1)].Type;
+                            var t2 = typeCache[config.GetIndex(x, y - 2)].Type;
+                            if (t == t1 && t == t2)
+                                continue;
+                        }
 
                         allowed.Add(t);
                     }
 
                     int idx = config.GetIndex(x, y);
                     int rnd = Random.Range(0, allowed.Length);
-                    result[idx] = allowed[rnd];
+                    typeCache[idx] = new() { Type = allowed[rnd] };
                 }
             }
 

@@ -46,6 +46,10 @@ namespace Match3.ECS.Components
     }
 
     public struct MatchTag : IComponentData { }
+
     public struct ClearTag : IComponentData { }
+    public struct ClearDoneEvent : IComponentData { }
+
     public struct DropTag : IComponentData { }
+    public struct DropDoneEvent : IComponentData { }
 }

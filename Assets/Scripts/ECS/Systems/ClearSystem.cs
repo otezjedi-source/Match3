@@ -1,6 +1,4 @@
-using System;
 using Match3.ECS.Components;
-using Match3.Game;
 using Unity.Collections;
 using Unity.Entities;
 
@@ -10,10 +8,16 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(MatchSystem))]
     public partial struct ClearSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private EntityQuery clearQuery;
+        private EntityQuery matchQuery;
+
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<MatchConfig>();
+
+            clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
+            matchQuery = SystemAPI.QueryBuilder().WithAll<MatchTag>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -26,11 +30,9 @@ namespace Match3.ECS.Systems
             if (gameState.ValueRO.PhaseTimer > 0)
                 return;
 
-            var clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
             if (!clearQuery.IsEmpty)
                 return;
 
-            var matchQuery = SystemAPI.QueryBuilder().WithAll<MatchTag>().Build();
             if (matchQuery.IsEmpty)
             {
                 gameState.ValueRW.Phase = GamePhase.Fall;
@@ -39,24 +41,25 @@ namespace Match3.ECS.Systems
 
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
+            var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
             int clearCount = 0;
 
-            for (int i = 0; i < gridCells.Length; i++)
+            foreach (var (tileData, viewData, entity) in 
+                SystemAPI.Query<RefRO<TileData>, TileViewData>()
+                    .WithAll<MatchTag>()
+                    .WithNone<ClearTag>()
+                    .WithEntityAccess())
             {
-                if (gridCells[i].IsEmpty)
-                    continue;
+                if (viewData.View != null)
+                    viewData.View.PlayClearAnim();
 
-                var tile = gridCells[i].Tile;
-                if (state.EntityManager.HasComponent<MatchTag>(tile) &&
-                    !state.EntityManager.HasComponent<ClearTag>(tile))
-                {
-                    ecb.AddComponent<ClearTag>(tile);
-                    gridCells[i] = new() { Tile = Entity.Null };
-                    ++clearCount;
-                }
+                var idx = gridConfig.GetIndex(tileData.ValueRO.GridPos);
+                gridCells[idx] = new() { Tile = Entity.Null };
+                ecb.AddComponent<ClearTag>(entity);
+                ++clearCount;
             }
 
             if (clearCount > 0)
@@ -66,6 +69,9 @@ namespace Match3.ECS.Systems
 
                 var soundEntity = ecb.CreateEntity();
                 ecb.AddComponent(soundEntity, new PlaySoundRequest { Type = SoundType.Match });
+
+                var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
+                dirtyFlag.ValueRW.IsDirty = true;
             }
 
             foreach (var (_, entity) in SystemAPI.Query<RefRO<SwapRequest>>().WithEntityAccess())
@@ -73,9 +79,6 @@ namespace Match3.ECS.Systems
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
-
-            var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
-            dirtyFlag.ValueRW.IsDirty = true;
         }
     }
 
@@ -96,44 +99,20 @@ namespace Match3.ECS.Systems
 
             var ecb = new EntityCommandBuffer(Allocator.Temp);
 
-            foreach (var (viewData, entity) in SystemAPI.Query<TileViewData>()
+            foreach (var (_, entity) in SystemAPI.Query<ClearDoneEvent>()
                 .WithAll<ClearTag, MatchTag>().WithEntityAccess())
             {
-                if (viewData.View == null)
-                    continue;
-
-                ecb.RemoveComponent<MatchTag>(entity);
                 ecb.SetComponent<TileStateData>(entity, new() { State = TileState.Clear });
-                RunClearAnimation(viewData.View, entity, refs.TileFactory, state.EntityManager);
+                ecb.RemoveComponent<ClearTag>(entity);
+                ecb.RemoveComponent<ClearDoneEvent>(entity);
+                ecb.RemoveComponent<DropTag>(entity);
+                ecb.RemoveComponent<DropDoneEvent>(entity);
+                ecb.RemoveComponent<MatchTag>(entity);
+                refs.TileFactory.Return(entity);
             }
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
-        }
-        
-        private readonly async void RunClearAnimation(TileView view, Entity entity,
-            Factories.TileFactory factory, EntityManager entityMgr)
-        {
-            try
-            {
-                await view.ClearAnimationAsync();
-                Clear();
-            }
-            catch (OperationCanceledException) { }
-            catch (Exception)
-            {
-                Clear();
-            }
-
-            void Clear()
-            {
-                if (entityMgr.Exists(entity))
-                {
-                    if (entityMgr.HasComponent<ClearTag>(entity))
-                        entityMgr.RemoveComponent<ClearTag>(entity);
-                    factory.Return(entity);
-                }
-            }
         }
     }
 }

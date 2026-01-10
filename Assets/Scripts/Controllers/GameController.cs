@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using Match3.ECS.Components;
 using UniRx;
 using Unity.Entities;
@@ -11,15 +12,18 @@ namespace Match3.Controllers
         [Inject] private readonly EntityManager entityMgr;
         [Inject] private readonly ScoreController scoreController;
 
-        private EntityQuery gameStateQuery;
-        private readonly CompositeDisposable disposables = new();
-
         public readonly ReactiveProperty<GamePhase> CurrentPhase = new(GamePhase.Idle);
         public readonly ReactiveProperty<bool> IsGameOver = new(false);
 
+        private readonly Dictionary<Type, EntityQuery> queryCache = new();
+        private readonly CompositeDisposable disposables = new();
+
         public void Init()
         {
-            gameStateQuery = entityMgr.CreateEntityQuery(typeof(GameState));
+            CacheQuery<GameState>();
+            CacheQuery<GameOverEvent>();
+            CacheQuery<GridStartRequest>();
+            CacheQuery<GridResetRequest>();
 
             Observable.EveryUpdate()
                 .Subscribe(_ => UpdateGameState())
@@ -28,23 +32,21 @@ namespace Match3.Controllers
 
         private void UpdateGameState()
         {
-            if (gameStateQuery.IsEmpty)
-                return;
+            var query = GetQuery<GameState>();
+            if (!query.IsEmpty)
+                CurrentPhase.Value = query.GetSingleton<GameState>().Phase;
 
-            var gameState = gameStateQuery.GetSingleton<GameState>();
-            CurrentPhase.Value = gameState.Phase;
-
-            var gameOverQuery = entityMgr.CreateEntityQuery(typeof(GameOverEvent));
-            if (!gameOverQuery.IsEmpty)
+            query = GetQuery<GameOverEvent>();
+            if (!query.IsEmpty)
             {
                 IsGameOver.Value = true;
-                entityMgr.DestroyEntity(gameOverQuery);
+                entityMgr.DestroyEntity(query);
             }
         }
 
         public void RequestRestart()
         {
-            if (!HasSingleton<GridResetRequest>())
+            if (GetQuery<GridResetRequest>().IsEmpty)
                 entityMgr.CreateSingleton<GridResetRequest>();
 
             IsGameOver.Value = false;
@@ -53,21 +55,40 @@ namespace Match3.Controllers
 
         public void RequestStart()
         {
-            if (!HasSingleton<GridStartRequest>())
+            if (GetQuery<GridStartRequest>().IsEmpty)
                 entityMgr.CreateSingleton<GridStartRequest>();
-        }
-
-        private bool HasSingleton<T>() where T : unmanaged, IComponentData
-        {
-            var query = entityMgr.CreateEntityQuery(typeof(T));
-            return !query.IsEmpty;
         }
 
         public void Dispose()
         {
-            disposables?.Dispose();
+            ClearQueries();
+
             CurrentPhase?.Dispose();
             IsGameOver?.Dispose();
+            disposables?.Dispose();
+        }
+
+        private void CacheQuery<T>() where T : unmanaged, IComponentData
+        {
+            var type = typeof(T);
+            if (!queryCache.ContainsKey(type))
+                queryCache[type] = entityMgr.CreateEntityQuery(typeof(T));
+        }
+
+        private EntityQuery GetQuery<T>() where T : unmanaged, IComponentData
+        {
+            queryCache.TryGetValue(typeof(T), out var query);
+            return query;
+        }
+
+        private void ClearQueries()
+        {
+            foreach (var query in queryCache.Values)
+            {
+                if (!query.Equals(default))
+                    query.Dispose();
+            }
+            queryCache.Clear();
         }
     }
 }

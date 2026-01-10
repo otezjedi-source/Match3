@@ -1,4 +1,3 @@
-using System;
 using Match3.ECS.Components;
 using Unity.Collections;
 using Unity.Entities;
@@ -16,22 +15,31 @@ namespace Match3.ECS.Systems
         public readonly void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            bool playDrop = false;
+            SyncMovingTiles(ref state);
+            StartDropAnims(ref state, refs);
+            CompleteDropAnims(ref state);
+        }
 
+        private readonly void SyncMovingTiles(ref SystemState state)
+        {
             foreach (var (worldPos, viewData) in
-                SystemAPI.Query<RefRO<TileWorldPos>, TileViewData>()
-                    .WithAll<TileMove>())
+                SystemAPI.Query<RefRO<TileWorldPos>, TileViewData>().WithAll<TileMove>())
             {
                 if (viewData.View != null)
                     viewData.View.transform.position = worldPos.ValueRO.Pos;
             }
 
+        }
+
+        private readonly void StartDropAnims(ref SystemState state, ManagedReferences refs)
+        {
             var ecb = new EntityCommandBuffer(Allocator.Temp);
+            bool playSound = false;
 
             foreach (var (worldPos, stateData, viewData, entity) in
                 SystemAPI.Query<RefRO<TileWorldPos>, RefRO<TileStateData>, TileViewData>()
                     .WithDisabled<TileMove>()
-                    .WithNone<DropTag>()
+                    .WithNone<DropTag, DropDoneEvent>()
                     .WithEntityAccess())
             {
                 if (viewData.View == null)
@@ -42,40 +50,33 @@ namespace Match3.ECS.Systems
                 if (stateData.ValueRO.State != TileState.Fall)
                     continue;
 
+                viewData.View.PlayDropAnim();
                 ecb.AddComponent<DropTag>(entity);
-                RunDropAnimation(viewData.View, entity, state.EntityManager);
-                playDrop = true;
+                playSound = true;
             }
 
             ecb.Playback(state.EntityManager);
             ecb.Dispose();
 
-            if (playDrop && refs?.SoundController != null)
+            if (playSound && refs?.SoundController != null)
                 refs.SoundController.PlayDrop();
         }
 
-        private static async void RunDropAnimation(Game.TileView view, Entity entity, EntityManager entityMgr)
+        private readonly void CompleteDropAnims(ref SystemState state)
         {
-            try
+            var ecb = new EntityCommandBuffer(Allocator.Temp);
+
+            foreach (var (_, entity) in
+                SystemAPI.Query<RefRO<DropDoneEvent>>().WithAll<DropTag>().WithEntityAccess())
             {
-                await view.DropAnimationAsync();
-                Clear();
-            }
-            catch (OperationCanceledException) { }
-            catch (Exception)
-            {
-                Clear();
+                state.EntityManager.SetComponentData(entity, new TileStateData { State = TileState.Idle });
+
+                ecb.RemoveComponent<DropTag>(entity);
+                ecb.RemoveComponent<DropDoneEvent>(entity);
             }
 
-            void Clear()
-            {
-                if (entityMgr.Exists(entity))
-                {
-                    if (entityMgr.HasComponent<DropTag>(entity))
-                        entityMgr.RemoveComponent<DropTag>(entity);
-                    entityMgr.SetComponentData(entity, new TileStateData { State = TileState.Idle });
-                }
-            }
+            ecb.Playback(state.EntityManager);
+            ecb.Dispose();
         }
     }
 }
