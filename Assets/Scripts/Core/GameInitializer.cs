@@ -28,9 +28,11 @@ namespace Match3.Core
 
             CreateManagedRefs();
             EnableSystems(true);
-            gameController.RequestStart();
-
+            
             inputController.Init();
+            gameController.Init();
+
+            gameController.RequestStart();
         }
 
         public void Tick()
@@ -54,6 +56,7 @@ namespace Match3.Core
                 refs.SoundController = soundController;
                 refs.TileTypeRegistry = tileTypeRegistry;
                 refs.TileFactory = tileFactory;
+                query.Dispose();
                 return;
             }
 
@@ -65,6 +68,7 @@ namespace Match3.Core
                 TileTypeRegistry = tileTypeRegistry,
                 TileFactory = tileFactory,
             });
+            query.Dispose();
         }
 
         private void EnableSystems(bool enabled)

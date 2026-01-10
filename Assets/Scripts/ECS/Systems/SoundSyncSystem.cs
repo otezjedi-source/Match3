@@ -14,7 +14,7 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
 
-        public readonly void OnUpdate(ref SystemState state)
+        public void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
             if (refs?.SoundController == null)

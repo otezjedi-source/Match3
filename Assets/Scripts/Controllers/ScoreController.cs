@@ -13,6 +13,7 @@ namespace Match3.Controllers
 
         public readonly ReactiveProperty<int> Score = new(0);
         public readonly ReactiveProperty<int> HighScore = new(0);
+        public readonly ReactiveProperty<bool> IsReady = new(false);
 
         private readonly CompositeDisposable disposables = new();
         private SaveData saveData;
@@ -31,6 +32,7 @@ namespace Match3.Controllers
         {
             saveData = await saveController.LoadAsync();
             HighScore.Value = saveData.HighScore;
+            IsReady.Value = true;
         }
 
         public void AddScore(int points)
@@ -74,6 +76,7 @@ namespace Match3.Controllers
             disposables?.Dispose();
             Score?.Dispose();
             HighScore?.Dispose();
+            IsReady?.Dispose();
         }
     }
 }

@@ -154,9 +154,8 @@ namespace Match3.Game
                     using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cts?.Token ?? default, ct);
                     await WaitForAnimationComplete(clearAnimation, tokenSource.Token);
                 }
-                catch (OperationCanceledException e)
+                catch (OperationCanceledException)
                 {
-                    Debug.LogException(e);
                     return;
                 }
             }

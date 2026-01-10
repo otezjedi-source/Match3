@@ -78,7 +78,8 @@ namespace Match3.Controllers
 
         private EntityQuery GetQuery<T>() where T : unmanaged, IComponentData
         {
-            queryCache.TryGetValue(typeof(T), out var query);
+            if (!queryCache.TryGetValue(typeof(T), out var query))
+                throw new InvalidOperationException($"Query for {typeof(T)} not cached. Call CacheQuery first.");
             return query;
         }
 

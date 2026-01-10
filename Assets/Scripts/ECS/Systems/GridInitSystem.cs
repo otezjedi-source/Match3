@@ -2,7 +2,7 @@ using System;
 using Match3.ECS.Components;
 using Unity.Collections;
 using Unity.Entities;
-using Random = UnityEngine.Random;
+using Random = Unity.Mathematics.Random;
 
 namespace Match3.ECS.Systems
 {
@@ -85,6 +85,7 @@ namespace Match3.ECS.Systems
         private NativeList<TileType> allowedTypes;
         private NativeList<Entity> gridTilesCache;
         private NativeList<TileType> gridTypesCache;
+        private Random random;
 
         public void OnCreate(ref SystemState state)
         {
@@ -93,10 +94,13 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<MatchConfig>();
             state.RequireForUpdate<ManagedReferences>();
             state.RequireForUpdate<GridStartRequest>();
+            state.RequireForUpdate<GameState>();
 
             allowedTypes = new(8, Allocator.Persistent);
             gridTilesCache = new(64, Allocator.Persistent);
             gridTypesCache = new(64, Allocator.Persistent);
+
+            random = new((uint)Environment.TickCount);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -125,7 +129,7 @@ namespace Match3.ECS.Systems
             int attempts = 0;
             while (attempts < gridConfig.MaxInitAttempts)
             {
-                if (PossibleMovesChecker.CheckMoves(gridTypesCache, ref gridConfig, ref matchConfig))
+                if (PossibleMovesChecker.CheckMoves(ref gridTypesCache, ref gridConfig, ref matchConfig))
                     break;
 
                 GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig);
@@ -153,11 +157,15 @@ namespace Match3.ECS.Systems
             var movesCache = SystemAPI.GetComponentRW<PossibleMovesCache>(gridEntity);
             movesCache.ValueRW.IsValid = true;
 
+            var gameState = SystemAPI.GetSingletonRW<GameState>();
+            gameState.ValueRW.Phase = GamePhase.Idle;
+            gameState.ValueRW.PhaseTimer = 0;
+
             var request = SystemAPI.QueryBuilder().WithAll<GridStartRequest>().Build();
             state.EntityManager.DestroyEntity(request);
         }
 
-        private readonly void GenerateTypes(NativeArray<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig config)
+        private void GenerateTypes(NativeArray<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig config)
         {
             for (int y = 0; y < config.Height; y++)
             {
@@ -187,7 +195,7 @@ namespace Match3.ECS.Systems
                     }
 
                     int idx = config.GetIndex(x, y);
-                    int rnd = Random.Range(0, allowedTypes.Length);
+                    int rnd = random.NextInt(0, allowedTypes.Length);
                     typeCache[idx] = new() { Type = allowedTypes[rnd] };
                 }
             }

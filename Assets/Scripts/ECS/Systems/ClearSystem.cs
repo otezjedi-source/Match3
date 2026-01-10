@@ -90,7 +90,7 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<ManagedReferences>();
         }
 
-        public readonly void OnUpdate(ref SystemState state)
+        public void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
             if (refs?.TileFactory == null)

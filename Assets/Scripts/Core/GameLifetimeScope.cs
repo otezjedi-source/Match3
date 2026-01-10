@@ -1,3 +1,4 @@
+using System;
 using Match3.Controllers;
 using Match3.Factories;
 using Match3.Game;
@@ -17,7 +18,11 @@ namespace Match3.Core
 
         protected override void Configure(IContainerBuilder builder)
         {
-            builder.RegisterInstance(World.DefaultGameObjectInjectionWorld.EntityManager);
+            var world = World.DefaultGameObjectInjectionWorld;
+            if (world == null)
+                throw new InvalidOperationException("ECS World not initialized");
+            
+            builder.RegisterInstance(world.EntityManager);
             
             builder.Register<TileFactory>(Lifetime.Scoped)
                 .WithParameter(tilePrefab)

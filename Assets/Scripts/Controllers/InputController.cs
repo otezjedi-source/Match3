@@ -8,7 +8,7 @@ using VContainer;
 
 namespace Match3.Controllers
 {
-    public class InputController
+    public class InputController : IDisposable
     {
         [Inject] private readonly GameConfig config;
         [Inject] private readonly EntityManager entityMgr;
@@ -26,6 +26,12 @@ namespace Match3.Controllers
             if (mainCamera == null)
                 throw new InvalidOperationException("Main camera not found");
             gameStateQuery = entityMgr.CreateEntityQuery(typeof(GameState));
+        }
+
+        public void Dispose()
+        {
+            if (!gameStateQuery.Equals(default))
+                gameStateQuery.Dispose();
         }
 
         public void Update()

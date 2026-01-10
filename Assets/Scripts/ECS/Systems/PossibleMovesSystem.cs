@@ -48,7 +48,7 @@ namespace Match3.ECS.Systems
                 for (int i = 0; i < typeCache.Length; i++)
                     gridTypesCache.Add(typeCache[i].Type);
 
-                bool hasMoves = PossibleMovesChecker.CheckMoves(gridTypesCache, ref gridConfig, ref matchConfig);
+                bool hasMoves = PossibleMovesChecker.CheckMoves(ref gridTypesCache, ref gridConfig, ref matchConfig);
                 movesCache.ValueRW.HasMoves = hasMoves;
                 movesCache.ValueRW.IsValid = true;
             }
@@ -65,16 +65,16 @@ namespace Match3.ECS.Systems
     public static class PossibleMovesChecker
     {
         [BurstCompile]
-        public static bool CheckMoves(NativeList<TileType> types, ref GridConfig gridConfig, ref MatchConfig matchConfig)
+        public static bool CheckMoves(ref NativeList<TileType> types, ref GridConfig gridConfig, ref MatchConfig matchConfig)
         {
             for (int x = 0; x < gridConfig.Width; x++)
             {
                 for (int y = 0; y < gridConfig.Height; y++)
                 {
-                    if (x < gridConfig.Width - 1 && TrySwapCheck(types, x, y, x + 1, y, ref gridConfig, ref matchConfig))
+                    if (x < gridConfig.Width - 1 && TrySwapCheck(ref types, x, y, x + 1, y, ref gridConfig, ref matchConfig))
                         return true;
 
-                    if (y < gridConfig.Height - 1 && TrySwapCheck(types, x, y, x, y + 1, ref gridConfig, ref matchConfig))
+                    if (y < gridConfig.Height - 1 && TrySwapCheck(ref types, x, y, x, y + 1, ref gridConfig, ref matchConfig))
                         return true;
                 }
             }
@@ -83,7 +83,7 @@ namespace Match3.ECS.Systems
 
         [BurstCompile]
         private static bool TrySwapCheck(
-            NativeList<TileType> types,
+            ref NativeList<TileType> types,
             int x1, int y1, int x2, int y2,
             ref GridConfig gridConfig, ref MatchConfig matchConfig)
         {
@@ -99,8 +99,8 @@ namespace Match3.ECS.Systems
             types[idx1] = typeB;
             types[idx2] = typeA;
 
-            bool hasMatch = HasMatchAt(types, x1, y1, ref gridConfig, ref matchConfig) ||
-                           HasMatchAt(types, x2, y2, ref gridConfig, ref matchConfig);
+            bool hasMatch = HasMatchAt(ref types, x1, y1, ref gridConfig, ref matchConfig) ||
+                           HasMatchAt(ref types, x2, y2, ref gridConfig, ref matchConfig);
 
             types[idx1] = typeA;
             types[idx2] = typeB;
@@ -110,7 +110,7 @@ namespace Match3.ECS.Systems
 
         [BurstCompile]
         private static bool HasMatchAt(
-            NativeList<TileType> types,
+            ref NativeList<TileType> types,
             int x, int y,
             ref GridConfig gridConfig, ref MatchConfig matchConfig)
         {

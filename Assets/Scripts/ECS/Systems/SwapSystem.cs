@@ -107,7 +107,7 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
         }
         
-        public readonly void OnUpdate(ref SystemState state)
+        public void OnUpdate(ref SystemState state)
         {
             var gameState = SystemAPI.GetSingletonRW<GameState>();
             if (gameState.ValueRO.Phase != GamePhase.Swap)

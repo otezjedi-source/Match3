@@ -1,3 +1,4 @@
+using System;
 using System.Collections.Generic;
 using Match3.Core;
 using Match3.ECS.Components;
@@ -5,10 +6,11 @@ using Match3.Game;
 using Unity.Entities;
 using UnityEngine;
 using VContainer;
+using Object = UnityEngine.Object;
 
 namespace Match3.Factories
 {
-    public class TileFactory
+    public class TileFactory : IDisposable
     {
         [Inject] private readonly TileView tilePrefab;
         [Inject] private readonly Transform parent;
@@ -77,6 +79,13 @@ namespace Match3.Factories
             if (!entityMgr.HasComponent<TileViewData>(entity))
                 return null;
             return entityMgr.GetComponentObject<TileViewData>(entity)?.View;
+        }
+
+        public void Dispose()
+        {
+            var query = entityMgr.CreateEntityQuery(typeof(TileData));
+            entityMgr.DestroyEntity(query);
+            query.Dispose();
         }
     }
 }
