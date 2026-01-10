@@ -1,9 +1,11 @@
 using System;
 using Match3.Core;
 using Match3.ECS.Components;
+using Match3.Input;
 using Unity.Entities;
 using Unity.Mathematics;
 using UnityEngine;
+using UnityEngine.InputSystem;
 using VContainer;
 
 namespace Match3.Controllers
@@ -15,6 +17,7 @@ namespace Match3.Controllers
 
         private Camera mainCamera;
         private EntityQuery gameStateQuery;
+        private InputSystem_Actions inputActions;
 
         private int2 dragStartPos;
         private float3 dragStartWorldPosition;
@@ -25,16 +28,27 @@ namespace Match3.Controllers
             mainCamera = Camera.main;
             if (mainCamera == null)
                 throw new InvalidOperationException("Main camera not found");
+
             gameStateQuery = entityMgr.CreateEntityQuery(typeof(GameState));
+
+            inputActions = new InputSystem_Actions();
+            inputActions.UI.Enable();
+            inputActions.UI.Click.performed += OnClick;
         }
 
         public void Dispose()
         {
-            if (World.DefaultGameObjectInjectionWorld?.IsCreated != true)
-                return;
-                
-            if (!gameStateQuery.Equals(default))
+            var worldExists = World.DefaultGameObjectInjectionWorld?.IsCreated;
+            if (worldExists == true && !gameStateQuery.Equals(default))
                 gameStateQuery.Dispose();
+
+            if (inputActions != null)
+            {
+                inputActions.UI.Click.performed -= OnClick;
+                inputActions.UI.Disable();
+                inputActions.Dispose();
+                inputActions = null;
+            }
         }
 
         public void Update()
@@ -42,7 +56,8 @@ namespace Match3.Controllers
             if (!CanInput())
                 return;
 
-            HandleDragInput();
+            if (isDragging)
+                HandleDrag();
         }
 
         private bool CanInput()
@@ -54,22 +69,20 @@ namespace Match3.Controllers
             return gameState.Phase == GamePhase.Idle;
         }
 
-        private void HandleDragInput()
+        private void OnClick(InputAction.CallbackContext ctx)
         {
-            if (Input.GetMouseButtonDown(0))
-                HandleDragBegin();
-
-            if (isDragging && Input.GetMouseButton(0))
-                HandleDrag();
-
-            if (Input.GetMouseButtonUp(0))
-                HandleDragEnd();
+            if (ctx.ReadValueAsButton())
+                HandlePointerDown();
+            else
+                HandlePointerUp();
         }
 
-        private void HandleDragBegin()
+        private void HandlePointerDown()
         {
-            var worldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            var screenPos = inputActions.UI.Point.ReadValue<Vector2>();
+            var worldPos = mainCamera.ScreenToWorldPoint(screenPos);
             var gridPos = WorldToGridPos(worldPos);
+
             if (IsValidPos(gridPos.x, gridPos.y))
             {
                 dragStartPos = gridPos;
@@ -80,7 +93,8 @@ namespace Match3.Controllers
 
         private void HandleDrag()
         {
-            float3 currentWorldPos = mainCamera.ScreenToWorldPoint(Input.mousePosition);
+            var screenPos = inputActions.UI.Point.ReadValue<Vector2>();
+            float3 currentWorldPos = mainCamera.ScreenToWorldPoint(screenPos);
             float dragDistance = math.distance(dragStartWorldPosition, currentWorldPos);
 
             if (dragDistance >= config.MinDragDistance)
@@ -96,7 +110,7 @@ namespace Match3.Controllers
             }
         }
 
-        private void HandleDragEnd()
+        private void HandlePointerUp()
         {
             isDragging = false;
         }
