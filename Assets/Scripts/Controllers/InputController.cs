@@ -70,7 +70,7 @@ namespace Match3.Controllers
         {
             if (ctx.ReadValueAsButton())
             {
-                if (!CanInput())
+                if (CanInput())
                     HandlePointerDown();
             }
             else

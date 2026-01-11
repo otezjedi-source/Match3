@@ -1,4 +1,5 @@
 using System;
+using System.Threading;
 using Cysharp.Threading.Tasks;
 using Match3.Controllers;
 using Match3.ECS.Components;
@@ -22,13 +23,15 @@ namespace Match3.Core
 
         private World world;
         private EntityManager entityMgr;
+        private CancellationTokenSource cts;
 
         public void Start()
         {
-            InitAsync().Forget();
+            cts = new();
+            InitAsync(cts.Token).Forget();
         }
         
-        private async UniTaskVoid InitAsync()
+        private async UniTaskVoid InitAsync(CancellationToken ct)
         {
             using (loadingController.BeginLoading())
             {
@@ -44,8 +47,15 @@ namespace Match3.Core
                 gameController.RequestStart();
 
                 var query = entityMgr.CreateEntityQuery(typeof(GridStartRequest));
-                await UniTask.WaitUntil(() => query.IsEmpty);
-                query.Dispose();
+                try
+                {
+                    await UniTask.WaitUntil(() => query.IsEmpty, cancellationToken: ct);
+                }
+                catch (OperationCanceledException) { }
+                finally
+                {
+                    query.Dispose();
+                }
             }
         }
 
@@ -56,6 +66,10 @@ namespace Match3.Core
 
         public void Dispose()
         {
+            cts?.Cancel();
+            cts?.Dispose();
+            cts = null;
+            
             EnableSystems(false);
         }
 

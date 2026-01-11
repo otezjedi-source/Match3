@@ -2,6 +2,7 @@ using Cysharp.Threading.Tasks;
 using Match3.Controllers;
 using TMPro;
 using UniRx;
+using Unity.Entities;
 #if UNITY_EDITOR
 using UnityEditor;
 #endif
@@ -61,6 +62,10 @@ namespace Match3.UI
         private void OnBtnQuitClick()
         {
             soundController.PlayBtnClick();
+
+            if (World.DefaultGameObjectInjectionWorld?.IsCreated == true)
+                World.DefaultGameObjectInjectionWorld.Dispose();
+                
 #if UNITY_EDITOR
             EditorApplication.isPlaying = false;
 #else
