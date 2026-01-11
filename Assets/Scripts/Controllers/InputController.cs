@@ -53,10 +53,7 @@ namespace Match3.Controllers
 
         public void Update()
         {
-            if (!CanInput())
-                return;
-
-            if (isDragging)
+            if (isDragging && CanInput())
                 HandleDrag();
         }
 
@@ -72,7 +69,10 @@ namespace Match3.Controllers
         private void OnClick(InputAction.CallbackContext ctx)
         {
             if (ctx.ReadValueAsButton())
-                HandlePointerDown();
+            {
+                if (!CanInput())
+                    HandlePointerDown();
+            }
             else
                 HandlePointerUp();
         }
