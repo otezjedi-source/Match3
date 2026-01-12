@@ -21,4 +21,14 @@ namespace Match3.ECS.Systems
             Enabled = false;
         }
     }
+
+    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    public partial class GameSyncSystemGroup : ComponentSystemGroup
+    {
+        protected override void OnCreate()
+        {
+            base.OnCreate();
+            Enabled = false;
+        }
+    }
 }

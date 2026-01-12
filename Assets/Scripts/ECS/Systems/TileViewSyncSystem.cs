@@ -1,10 +1,9 @@
 using Match3.ECS.Components;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
-    [UpdateInGroup(typeof(LateSimulationSystemGroup))]
+    [UpdateInGroup(typeof(GameSyncSystemGroup))]
     public partial struct TileViewSyncSystem : ISystem
     {
         public readonly void OnCreate(ref SystemState state)

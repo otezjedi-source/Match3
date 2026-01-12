@@ -111,6 +111,10 @@ namespace Match3.Core
             var gameGroup = world.GetExistingSystemManaged<GameSystemGroup>();
             if (gameGroup != null)
                 gameGroup.Enabled = enabled;
+
+            var syncGroup = world.GetExistingSystemManaged<GameSyncSystemGroup>();
+            if (syncGroup != null)
+                syncGroup.Enabled = enabled;
         }
     }
 }

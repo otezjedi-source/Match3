@@ -17,10 +17,16 @@ namespace Match3.ECS.Systems
         }
 
         [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            state.Dependency.Complete();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             float deltaTime = SystemAPI.Time.DeltaTime;
-            new TileMoveJob { DeltaTime = deltaTime }.ScheduleParallel();
+            state.Dependency = new TileMoveJob { DeltaTime = deltaTime }.ScheduleParallel(state.Dependency);
         }
     }
 

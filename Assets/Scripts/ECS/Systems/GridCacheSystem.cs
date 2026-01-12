@@ -18,6 +18,12 @@ namespace Match3.ECS.Systems
         }
 
         [BurstCompile]
+        public void OnDestroy(ref SystemState state)
+        {
+            state.Dependency.Complete();
+        }
+
+        [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
@@ -39,7 +45,8 @@ namespace Match3.ECS.Systems
                 TypeCache = typeCache.AsNativeArray(),
                 TileLookup = tileLookup,
             };
-            job.Schedule(gridCells.Length, 64).Complete();
+            state.Dependency = job.Schedule(gridCells.Length, 64, state.Dependency);
+            state.Dependency.Complete();
 
             dirtyFlag.ValueRW.IsDirty = false;
 

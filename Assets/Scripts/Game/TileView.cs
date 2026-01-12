@@ -36,8 +36,11 @@ namespace Match3.Game
         private Entity entity;
 
         #region Init
-        public void Init(GameConfig.TileData tileData)
+        public void Init(GameConfig.TileData tileData, EntityManager entityMgr, Entity entity)
         {
+            this.entityMgr = entityMgr;
+            this.entity = entity;
+
             ResetCts();
             ResetTransforms();
 
@@ -81,19 +84,6 @@ namespace Match3.Game
         }
         #endregion
 
-        #region Binding
-        public void Bind(EntityManager entityMgr, Entity entity)
-        {
-            this.entityMgr = entityMgr;
-            this.entity = entity;
-        }
-        
-        public void Unbind()
-        {
-            entity = Entity.Null;
-        }
-        #endregion
-
         #region Reset
         private void ResetCts()
         {
@@ -122,7 +112,7 @@ namespace Match3.Game
             spriteHandle.Release();
             clearAnimHandle.Release();
             ResetTransforms();
-            Unbind();
+            entity = Entity.Null;
         }
 
         private void ClearCts()

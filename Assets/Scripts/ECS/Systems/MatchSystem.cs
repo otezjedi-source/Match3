@@ -49,8 +49,8 @@ namespace Match3.ECS.Systems
             if (matchesCache.Capacity < gridConfig.CellCount)
                 matchesCache.Capacity = gridConfig.CellCount;
 
-            ScanLines(matchesCache, typeCache.AsNativeArray(), gridConfig, matchConfig, true);
-            ScanLines(matchesCache, typeCache.AsNativeArray(), gridConfig, matchConfig, false);
+            ScanLines(matchesCache, typeCache, gridConfig, matchConfig, true);
+            ScanLines(matchesCache, typeCache, gridConfig, matchConfig, false);
 
             matchResults.Clear();
             foreach (var pos in matchesCache)
@@ -78,7 +78,7 @@ namespace Match3.ECS.Systems
         [BurstCompile]
         private readonly void ScanLines(
             NativeHashSet<int2> matches,
-            NativeArray<GridTileTypeCache> typeCache,
+            DynamicBuffer<GridTileTypeCache> typeCache,
             GridConfig gridConfig, MatchConfig matchConfig,
             bool horizontal)
         {

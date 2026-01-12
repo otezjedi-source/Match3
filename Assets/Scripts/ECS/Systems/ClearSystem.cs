@@ -1,5 +1,4 @@
 using Match3.ECS.Components;
-using Unity.Collections;
 using Unity.Entities;
 
 namespace Match3.ECS.Systems

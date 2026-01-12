@@ -42,7 +42,7 @@ namespace Match3.ECS.Systems
                 var gridConfig = SystemAPI.GetSingleton<GridConfig>();
                 var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
                 var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-                var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity).AsNativeArray();
+                var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
 
                 gridTypesCache.Clear();
                 for (int i = 0; i < typeCache.Length; i++)

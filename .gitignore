@@ -11,3 +11,5 @@ Assets/Plugins/UniRx/Examples
 Examples.meta
 Assets/SceneDependencyCache
 SceneDependencyCache.meta
+link.xml
+link.xml.meta

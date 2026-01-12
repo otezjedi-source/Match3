@@ -7,11 +7,15 @@ namespace Match3.ECS.Systems
     [UpdateBefore(typeof(GridTilesInitSystem))]
     public partial struct GridResetSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private EntityQuery requestQuery;
+
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<ManagedReferences>();
             state.RequireForUpdate<GridResetRequest>();
+
+            requestQuery = SystemAPI.QueryBuilder().WithAll<GridResetRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -42,9 +46,7 @@ namespace Match3.ECS.Systems
             var movesCache = SystemAPI.GetComponentRW<PossibleMovesCache>(gridEntity);
             movesCache.ValueRW.IsValid = false;
 
-            var request = SystemAPI.QueryBuilder().WithAll<GridResetRequest>().Build();
-            state.EntityManager.DestroyEntity(request);
-
+            state.EntityManager.DestroyEntity(requestQuery);
             state.EntityManager.CreateSingleton<GridStartRequest>();
         }
     }
