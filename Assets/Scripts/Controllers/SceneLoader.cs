@@ -40,7 +40,7 @@ namespace Match3.Controllers
 
                     var op = SceneManager.LoadSceneAsync(sceneName);
                     if (op == null)
-                        throw new InvalidOperationException($"Failed to start loading scene: {sceneName}");
+                        throw new InvalidOperationException($"[SceneLoader] Failed to start loading scene: {sceneName}");
 
                     using (LifetimeScope.EnqueueParent(parentScope))
                     {

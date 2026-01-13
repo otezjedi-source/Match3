@@ -12,8 +12,8 @@ namespace Match3.Controllers
 {
     public class InputController : IDisposable
     {
-        [Inject] private readonly GameConfig config;
-        [Inject] private readonly EntityManager entityMgr;
+        [Inject] private readonly GameConfig gameConfig;
+        [Inject] private readonly EntityManager entityManager;
 
         private Camera mainCamera;
         private EntityQuery gameStateQuery;
@@ -23,43 +23,76 @@ namespace Match3.Controllers
         private float3 dragStartWorldPosition;
         private bool isDragging;
 
+        private bool isInitialized;
+        private bool isDisposed;
+
         public void Init()
         {
+            if (isDisposed)
+                throw new ObjectDisposedException("[InputController] Trying to init disposed");
+
+            DisposeQuery();
+            DisposeInputActions();
+
             mainCamera = Camera.main;
             if (mainCamera == null)
-                throw new InvalidOperationException("Main camera not found");
+                throw new InvalidOperationException("[InputController] Main camera not found");
 
-            gameStateQuery = entityMgr.CreateEntityQuery(typeof(GameState));
+            gameStateQuery = entityManager.CreateEntityQuery(typeof(GameState));
 
             inputActions = new InputSystem_Actions();
             inputActions.UI.Enable();
             inputActions.UI.Click.performed += OnClick;
+
+            isInitialized = true;
         }
 
         public void Dispose()
         {
-            var worldExists = World.DefaultGameObjectInjectionWorld?.IsCreated;
-            if (worldExists == true && !gameStateQuery.Equals(default))
-                gameStateQuery.Dispose();
+            if (isDisposed)
+                return;
 
-            if (inputActions != null)
-            {
-                inputActions.UI.Click.performed -= OnClick;
-                inputActions.UI.Disable();
-                inputActions.Dispose();
-                inputActions = null;
-            }
+            isDisposed = true;
+            isInitialized = false;
+
+            DisposeQuery();
+            DisposeInputActions();
+        }
+
+        private void DisposeQuery()
+        {
+            if (gameStateQuery.Equals(default))
+                return;
+
+            var worldExists = World.DefaultGameObjectInjectionWorld?.IsCreated == true;
+            if (worldExists)
+                gameStateQuery.Dispose();
+            gameStateQuery = default;
+        }
+        
+        private void DisposeInputActions()
+        {
+            if (inputActions == null)
+                return;
+
+            inputActions.UI.Click.performed -= OnClick;
+            inputActions.UI.Disable();
+            inputActions.Dispose();
+            inputActions = null;
         }
 
         public void Update()
         {
+            if (!isInitialized || isDisposed)
+                return;
+
             if (isDragging && CanInput())
                 HandleDrag();
         }
 
         private bool CanInput()
         {
-            if (gameStateQuery.IsEmpty)
+            if (gameStateQuery.Equals(default) || gameStateQuery.IsEmpty)
                 return false;
 
             var gameState = gameStateQuery.GetSingleton<GameState>();
@@ -68,6 +101,9 @@ namespace Match3.Controllers
 
         private void OnClick(InputAction.CallbackContext ctx)
         {
+            if (isDisposed || !isInitialized)
+                return;
+
             if (ctx.ReadValueAsButton())
             {
                 if (CanInput())
@@ -79,6 +115,9 @@ namespace Match3.Controllers
 
         private void HandlePointerDown()
         {
+            if (inputActions == null || mainCamera == null)
+                return;
+
             var screenPos = inputActions.UI.Point.ReadValue<Vector2>();
             var worldPos = mainCamera.ScreenToWorldPoint(screenPos);
             var gridPos = WorldToGridPos(worldPos);
@@ -93,18 +132,21 @@ namespace Match3.Controllers
 
         private void HandleDrag()
         {
+            if (inputActions == null || mainCamera == null)
+                return;
+                
             var screenPos = inputActions.UI.Point.ReadValue<Vector2>();
             float3 currentWorldPos = mainCamera.ScreenToWorldPoint(screenPos);
             float dragDistance = math.distance(dragStartWorldPosition, currentWorldPos);
 
-            if (dragDistance >= config.MinDragDistance)
+            if (dragDistance >= gameConfig.MinDragDistance)
             {
                 var dragDirection = math.normalize(currentWorldPos - dragStartWorldPosition);
                 var targetPos = GetTargetFromDirection(dragDirection);
                 if (IsValidPos(targetPos.x, targetPos.y))
                 {
-                    var request = entityMgr.CreateEntity();
-                    entityMgr.AddComponentData<PlayerSwapRequest>(request, new() { PosA = dragStartPos, PosB = targetPos });
+                    var request = entityManager.CreateEntity();
+                    entityManager.AddComponentData<PlayerSwapRequest>(request, new() { PosA = dragStartPos, PosB = targetPos });
                     isDragging = false;
                 }
             }
@@ -129,6 +171,6 @@ namespace Match3.Controllers
         }
 
         private int2 WorldToGridPos(float3 worldPos) => new((int)math.round(worldPos.x), (int)math.round(worldPos.y));
-        private bool IsValidPos(int x, int y) => x >= 0 && x < config.GridWidth && y >= 0 && y < config.GridHeight;
+        private bool IsValidPos(int x, int y) => x >= 0 && x < gameConfig.GridWidth && y >= 0 && y < gameConfig.GridHeight;
     }
 }

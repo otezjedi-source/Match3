@@ -5,6 +5,6 @@ namespace Match3.ECS.Authoring
 {
     public class GameConfigAuthoring : MonoBehaviour
     {
-        public GameConfig config;
+        public GameConfig gameConfig;
     }
 }

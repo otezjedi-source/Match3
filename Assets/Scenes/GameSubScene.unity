@@ -163,7 +163,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 97c2b9aabf6cf44eda285c21bcf2874e, type: 3}
   m_Name: 
   m_EditorClassIdentifier: Assembly-CSharp::Match3.ECS.Authoring.GameConfigAuthoring
-  config: {fileID: 11400000, guid: 34ad0b174b3a94f49811595583092ccb, type: 2}
+  gameConfig: {fileID: 11400000, guid: 34ad0b174b3a94f49811595583092ccb, type: 2}
 --- !u!1660057539 &9223372036854775807
 SceneRoots:
   m_ObjectHideFlags: 0

@@ -31,13 +31,13 @@ namespace Match3.ECS.Systems
             if (!dirtyFlag.ValueRO.IsDirty)
                 return;
 
-            var config = SystemAPI.GetSingleton<GridConfig>();
+            var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
             var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
             var tileLookup = SystemAPI.GetComponentLookup<TileData>(true);
 
-            if (typeCache.Length != config.CellCount)
-                typeCache.Length = config.CellCount;
+            if (typeCache.Length != gridConfig.CellCount)
+                typeCache.Length = gridConfig.CellCount;
 
             var job = new UpdateTypeCacheJob
             {

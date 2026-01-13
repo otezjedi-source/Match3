@@ -9,7 +9,7 @@ namespace Match3.Controllers
 {
     public class GameController : IDisposable
     {
-        [Inject] private readonly EntityManager entityMgr;
+        [Inject] private readonly EntityManager entityManager;
         [Inject] private readonly ScoreController scoreController;
 
         public readonly ReactiveProperty<GamePhase> CurrentPhase = new(GamePhase.Idle);
@@ -18,8 +18,15 @@ namespace Match3.Controllers
         private readonly Dictionary<Type, EntityQuery> queryCache = new();
         private readonly CompositeDisposable disposables = new();
 
+        private bool isDisposed;
+
+        private static bool WorldExists => World.DefaultGameObjectInjectionWorld?.IsCreated == true;
+
         public void Init()
         {
+            if (isDisposed)
+                throw new ObjectDisposedException("[GameController] Trying to init disposed");
+
             ClearQueries();
             CacheQuery<GameState>();
             CacheQuery<GameOverEvent>();
@@ -27,28 +34,40 @@ namespace Match3.Controllers
             CacheQuery<GridResetRequest>();
 
             Observable.EveryUpdate()
+                .Where(_ => !isDisposed)
                 .Subscribe(_ => UpdateGameState())
                 .AddTo(disposables);
         }
 
         private void UpdateGameState()
         {
-            var query = GetQuery<GameState>();
-            if (!query.IsEmpty)
-                CurrentPhase.Value = query.GetSingleton<GameState>().Phase;
+            if (isDisposed || !WorldExists)
+                return;
 
-            query = GetQuery<GameOverEvent>();
-            if (!query.IsEmpty)
+            var gameStateQuery = GetQuery<GameState>();
+            if (!gameStateQuery.IsEmpty)
             {
+                gameStateQuery.CompleteDependency();
+                CurrentPhase.Value = gameStateQuery.GetSingleton<GameState>().Phase;
+            }
+
+            var gameOverQuery = GetQuery<GameOverEvent>();
+            if (!gameOverQuery.IsEmpty)
+            {
+                gameOverQuery.CompleteDependency();
                 IsGameOver.Value = true;
-                entityMgr.DestroyEntity(query);
+                entityManager.DestroyEntity(gameOverQuery);
             }
         }
 
         public void RequestRestart()
         {
-            if (GetQuery<GridResetRequest>().IsEmpty)
-                entityMgr.CreateSingleton<GridResetRequest>();
+            if (isDisposed || !WorldExists)
+                return;
+
+            var gridResetQuery = GetQuery<GridResetRequest>();
+            if (gridResetQuery.IsEmpty)
+                entityManager.CreateSingleton<GridResetRequest>();
 
             IsGameOver.Value = false;
             scoreController.ResetScore();
@@ -56,37 +75,48 @@ namespace Match3.Controllers
 
         public void RequestStart()
         {
-            if (GetQuery<GridStartRequest>().IsEmpty)
-                entityMgr.CreateSingleton<GridStartRequest>();
+            if (isDisposed || !WorldExists)
+                return;
+
+            var gridStartQuery = GetQuery<GridStartRequest>();
+            if (gridStartQuery.IsEmpty)
+                entityManager.CreateSingleton<GridStartRequest>();
         }
 
         public void Dispose()
         {
-            ClearQueries();
+            if (isDisposed)
+                return;
 
+            isDisposed = true;
+
+            disposables?.Dispose();
             CurrentPhase?.Dispose();
             IsGameOver?.Dispose();
-            disposables?.Dispose();
+            ClearQueries();
         }
 
         private void CacheQuery<T>() where T : unmanaged, IComponentData
         {
             var type = typeof(T);
             if (!queryCache.ContainsKey(type))
-                queryCache[type] = entityMgr.CreateEntityQuery(typeof(T));
+                queryCache[type] = entityManager.CreateEntityQuery(typeof(T));
         }
 
         private EntityQuery GetQuery<T>() where T : unmanaged, IComponentData
         {
             if (!queryCache.TryGetValue(typeof(T), out var query))
-                throw new InvalidOperationException($"Query for {typeof(T)} not cached. Call CacheQuery first.");
+                throw new InvalidOperationException($"[GameController] Query for {typeof(T)} not cached. Call CacheQuery first.");
             return query;
         }
 
         private void ClearQueries()
         {
-            if (World.DefaultGameObjectInjectionWorld?.IsCreated != true)
+            if (!WorldExists)
+            {
+                queryCache.Clear();
                 return;
+            }
                 
             foreach (var query in queryCache.Values)
             {

@@ -31,51 +31,61 @@ namespace Match3.Game
         private readonly AssetHandle<SkeletonDataAsset> clearAnimHandle = new();
 
         private CancellationTokenSource cts;
-
-        private EntityManager entityMgr;
+        private EntityManager entityManager;
         private Entity entity;
+        private bool isCleared;
 
         #region Init
-        public void Init(GameConfig.TileData tileData, EntityManager entityMgr, Entity entity)
+        public void Init(GameConfig.TileData tileData, EntityManager entityManager, Entity entity)
         {
-            this.entityMgr = entityMgr;
+            this.entityManager = entityManager;
             this.entity = entity;
+            isCleared = false;
 
             ResetCts();
             ResetTransforms();
 
-            InitSpriteAsync(tileData.spriteRef, cts.Token).Forget(ex => Debug.LogException(ex));
-            InitClearAnimAsync(tileData.clearAnimRef, cts.Token).Forget(ex => Debug.LogException(ex));
+            var token = cts.Token;
+            InitSpriteAsync(tileData.spriteRef, token).Forget(ex => Debug.LogError($"[TileView] Failed InitSpriteAsync: {ex.Message}"));
+            InitClearAnimAsync(tileData.clearAnimRef, token).Forget(ex => Debug.LogError($"[TileView] Failed InitClearAnimAsync: {ex.Message}"));
         }
 
         private async UniTask InitSpriteAsync(AssetReference spriteRef, CancellationToken ct)
         {
-            if (sprite == null)
+            if (sprite == null || ct.IsCancellationRequested)
                 return;
 
             sprite.gameObject.SetActive(false);
-            var result = await spriteHandle.LoadAsync(spriteRef, ct);
 
-            if (ct.IsCancellationRequested || result == null)
-                return;
+            try
+            {
+                var result = await spriteHandle.LoadAsync(spriteRef, ct);
+                if (ct.IsCancellationRequested || result == null)
+                    return;
 
-            sprite.sprite = result;
-            sprite.gameObject.SetActive(true);
+                sprite.sprite = result;
+                sprite.gameObject.SetActive(true);
+            }
+            catch (OperationCanceledException) { }
         }
 
         private async UniTask InitClearAnimAsync(AssetReference clearAnimRef, CancellationToken ct)
         {
-            if (clearAnimation == null)
+            if (clearAnimation == null || ct.IsCancellationRequested)
                 return;
 
             clearAnimation.gameObject.SetActive(false);
-            var result = await clearAnimHandle.LoadAsync(clearAnimRef, ct);
 
-            if (ct.IsCancellationRequested || result == null)
-                return;
+            try
+            {
+                var result = await clearAnimHandle.LoadAsync(clearAnimRef, ct);
+                if (ct.IsCancellationRequested || result == null)
+                    return;
 
-            clearAnimation.skeletonDataAsset = result;
-            clearAnimation.Initialize(true);
+                clearAnimation.skeletonDataAsset = result;
+                clearAnimation.Initialize(true);
+            }
+            catch (OperationCanceledException) { }
         }
         
         private void OnDestroy()
@@ -108,6 +118,10 @@ namespace Match3.Game
         #region Clear
         public void Clear()
         {
+            if (isCleared)
+                return;
+
+            isCleared = true;
             ClearCts();
             spriteHandle.Release();
             clearAnimHandle.Release();
@@ -117,20 +131,43 @@ namespace Match3.Game
 
         private void ClearCts()
         {
-            cts?.Cancel();
-            cts?.Dispose();
-            cts = null;
+            if (cts == null)
+                return;
+
+            try
+            {
+                if (!cts.IsCancellationRequested)
+                    cts.Cancel();
+                cts.Dispose();
+            }
+            catch (ObjectDisposedException) { }
+            finally
+            {
+                cts = null;
+            }
         }
         #endregion
 
         #region Animations
         public void PlayClearAnim()
         {
-            ClearAnimationAsync().Forget(ex => Debug.LogException(ex));
+            if (isCleared)
+                return;
+            ClearAnimationAsync().Forget(ex =>
+            {
+                if (ex is not OperationCanceledException)
+                    Debug.LogError($"[TileView] Failed to play clear animation: {ex.Message}");
+            });
         }
 
         private async UniTask ClearAnimationAsync(CancellationToken ct = default)
         {
+            if (isCleared || cts == null || cts.IsCancellationRequested)
+            {
+                Notify<ClearDoneEvent>();
+                return;
+            }
+
             if (sprite != null)
                 sprite.gameObject.SetActive(false);
 
@@ -141,8 +178,7 @@ namespace Match3.Game
 
                 try
                 {
-                    using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cts?.Token ?? default, ct);
-                    await WaitForAnimationComplete(clearAnimation, tokenSource.Token);
+                    await WaitForAnimationComplete(clearAnimation, cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
@@ -155,17 +191,27 @@ namespace Match3.Game
 
         public void PlayDropAnim()
         {
-            DropAnimationAsync().Forget(ex => Debug.LogException(ex));
+            if (isCleared)
+                return;
+            DropAnimationAsync().Forget(ex =>
+            {
+                if (ex is not OperationCanceledException)
+                    Debug.LogError($"[TileView] Failed to play drop animation: {ex.Message}");
+            });
         }
 
         private async UniTask DropAnimationAsync(CancellationToken ct = default)
         {
+            if (isCleared || cts == null || cts.IsCancellationRequested)
+            {
+                Notify<DropDoneEvent>();
+                return;
+            }
+
             if (sprite != null)
             {
                 try
                 {
-                    using var tokenSource = CancellationTokenSource.CreateLinkedTokenSource(cts?.Token ?? default, ct);
-
                     await DOTween.Sequence()
                         .Append(sprite.transform.DOScale(squashScale, squashDuration))
                         .Join(sprite.transform.DOLocalMoveY(squashOffsetY, squashDuration))
@@ -173,11 +219,15 @@ namespace Match3.Game
                         .Join(sprite.transform.DOLocalMoveY(0f, stretchDuration))
                         .Append(sprite.transform.DOScale(Vector3.one, recoverDuration))
                         .SetLink(gameObject)
-                        .ToUniTask(cancellationToken: tokenSource.Token);
+                        .ToUniTask(cancellationToken: cts.Token);
                 }
                 catch (OperationCanceledException)
                 {
-                    ResetTransforms();
+                    if (sprite != null && sprite.transform != null)
+                    {
+                        sprite.transform.localScale = Vector3.one;
+                        sprite.transform.localPosition = Vector3.zero;
+                    }
                     return;
                 }
             }
@@ -189,7 +239,7 @@ namespace Match3.Game
         #region Helpers
         private async UniTask WaitForAnimationComplete(SkeletonAnimation anim, CancellationToken ct = default)
         {
-            if (anim == null)
+            if (anim == null || ct.IsCancellationRequested)
                 return;
 
             var entry = anim.AnimationState.GetCurrent(0);
@@ -197,6 +247,8 @@ namespace Match3.Game
                 return;
 
             var tcs = new UniTaskCompletionSource();
+
+            void OnComplete(TrackEntry e) => tcs.TrySetResult();
 
             entry.Complete += OnComplete;
 
@@ -208,23 +260,25 @@ namespace Match3.Game
             {
                 entry.Complete -= OnComplete;
             }
-
-            void OnComplete(TrackEntry e) => tcs.TrySetResult();
         }
-        
+
         private void Notify<T>() where T : unmanaged, IComponentData
         {
-            if (entity == Entity.Null || !entityMgr.Exists(entity))
+            if (isCleared || entity == Entity.Null)
+                return;
+            if (World.DefaultGameObjectInjectionWorld?.IsCreated != true)
+                return;
+            if (!entityManager.Exists(entity))
                 return;
 
             try
             {
-                if (!entityMgr.HasComponent<T>(entity))
-                    entityMgr.AddComponentData(entity, default(T));
+                if (!entityManager.HasComponent<T>(entity))
+                    entityManager.AddComponentData(entity, default(T));
             }
             catch (Exception ex)
             {
-                Debug.LogException(ex);
+                Debug.LogError($"[TileView] Failed to notify {typeof(T)}: {ex.Message}");
             }
         }
         #endregion

@@ -13,11 +13,11 @@ namespace Match3.Controllers
         public ReadOnlySpan<TileType> All => types;
 
         [Inject]
-        public TileTypeRegistry(GameConfig config)
+        public TileTypeRegistry(GameConfig gameConfig)
         {
-            types = new TileType[config.TilesData.Count];
+            types = new TileType[gameConfig.TilesData.Count];
             for (int i = 0; i < types.Length; i++)
-                types[i] = config.TilesData[i].type;
+                types[i] = gameConfig.TilesData[i].type;
         }
 
         public TileType GetRandomType()

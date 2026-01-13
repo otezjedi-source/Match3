@@ -128,7 +128,7 @@ namespace Match3.ECS.Systems
         private void MarkMatchedTiles(
             ref SystemState state,
             DynamicBuffer<MatchResult> matches,
-            GridConfig config,
+            GridConfig gridConfig,
             Entity gridEntity)
         {
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
@@ -138,7 +138,7 @@ namespace Match3.ECS.Systems
 
             foreach (var match in matches)
             {
-                int idx = config.GetIndex(match.Pos);
+                int idx = gridConfig.GetIndex(match.Pos);
                 var tile = gridCells[idx].Tile;
                 if (tile != Entity.Null && !matchLookup.HasComponent(tile))
                     ecb.AddComponent<MatchTag>(tile);

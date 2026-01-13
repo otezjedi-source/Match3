@@ -22,7 +22,7 @@ namespace Match3.Core
         [Inject] private readonly TileFactory tileFactory;
 
         private World world;
-        private EntityManager entityMgr;
+        private EntityManager entityManager;
         private CancellationTokenSource cts;
 
         public void Start()
@@ -36,17 +36,18 @@ namespace Match3.Core
             using (loadingController.BeginLoading())
             {
                 world = World.DefaultGameObjectInjectionWorld;
-                entityMgr = world.EntityManager;
+                entityManager = world.EntityManager;
 
                 CreateManagedRefs();
                 EnableSystems(true);
 
                 inputController.Init();
                 gameController.Init();
+                tileFactory.Init();
 
                 gameController.RequestStart();
 
-                var query = entityMgr.CreateEntityQuery(typeof(GridStartRequest));
+                var query = entityManager.CreateEntityQuery(typeof(GridStartRequest));
                 try
                 {
                     await UniTask.WaitUntil(() => query.IsEmpty, cancellationToken: ct);
@@ -75,11 +76,11 @@ namespace Match3.Core
 
         private void CreateManagedRefs()
         {
-            var query = entityMgr.CreateEntityQuery(typeof(ManagedReferences));
+            var query = entityManager.CreateEntityQuery(typeof(ManagedReferences));
             if (!query.IsEmpty)
             {
                 var entity = query.GetSingletonEntity();
-                var refs = entityMgr.GetComponentObject<ManagedReferences>(entity);
+                var refs = entityManager.GetComponentObject<ManagedReferences>(entity);
                 refs.ScoreController = scoreController;
                 refs.SoundController = soundController;
                 refs.TileTypeRegistry = tileTypeRegistry;
@@ -88,8 +89,8 @@ namespace Match3.Core
                 return;
             }
 
-            var newEntity = entityMgr.CreateEntity();
-            entityMgr.AddComponentObject(newEntity, new ManagedReferences
+            var newEntity = entityManager.CreateEntity();
+            entityManager.AddComponentObject(newEntity, new ManagedReferences
             {
                 ScoreController = scoreController,
                 SoundController = soundController,

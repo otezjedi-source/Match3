@@ -1,5 +1,6 @@
 using Match3.ECS.Components;
 using Unity.Entities;
+using UnityEngine;
 
 namespace Match3.ECS.Authoring
 {
@@ -7,26 +8,32 @@ namespace Match3.ECS.Authoring
     {
         public override void Bake(GameConfigAuthoring authoring)
         {
+            if (!authoring.gameConfig.Validate(out var error))
+            {
+                Debug.LogError($"[GameConfigBaker] Invalid GameConfig: {error}");
+                return;
+            }
+
             var entity = GetEntity(TransformUsageFlags.None);
 
             AddComponent<GridConfig>(entity, new()
             {
-                Width = authoring.config.GridWidth,
-                Height = authoring.config.GridHeight,
-                MaxInitAttempts = authoring.config.MaxGridInitAttempts,
+                Width = authoring.gameConfig.GridWidth,
+                Height = authoring.gameConfig.GridHeight,
+                MaxInitAttempts = authoring.gameConfig.MaxGridInitAttempts,
             });
 
             AddComponent<MatchConfig>(entity, new()
             {
-                MatchCount = authoring.config.MatchCount,
-                PointsPerTile = authoring.config.PointsPerTile,
+                MatchCount = authoring.gameConfig.MatchCount,
+                PointsPerTile = authoring.gameConfig.PointsPerTile,
             });
 
             AddComponent<TimingConfig>(entity, new()
             {
-                SwapDuration = authoring.config.SwapDuration,
-                FallDuration = authoring.config.FallDuration,
-                MatchDelay = authoring.config.MatchDelay,
+                SwapDuration = authoring.gameConfig.SwapDuration,
+                FallDuration = authoring.gameConfig.FallDuration,
+                MatchDelay = authoring.gameConfig.MatchDelay,
             });
 
             AddComponent<GameConfigTag>(entity);

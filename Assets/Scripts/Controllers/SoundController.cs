@@ -6,27 +6,27 @@ namespace Match3.Controllers
 {
     public class SoundController
     {
-        [Inject] private readonly GameConfig config;
+        [Inject] private readonly GameConfig gameConfig;
         [Inject] private readonly AudioSource audioSource;
 
         public void PlayBtnClick()
         {
-            audioSource.PlayOneShot(config.ButtonClickSound);
+            audioSource.PlayOneShot(gameConfig.ButtonClickSound);
         }
 
         public void PlaySwap()
         {
-            audioSource.PlayOneShot(config.SwapSound);
+            audioSource.PlayOneShot(gameConfig.SwapSound);
         }
 
         public void PlayMatch()
         {
-            audioSource.PlayOneShot(config.MatchSound);
+            audioSource.PlayOneShot(gameConfig.MatchSound);
         }
 
         public void PlayDrop()
         {
-            audioSource.PlayOneShot(config.DropSound);
+            audioSource.PlayOneShot(gameConfig.DropSound);
         }
     }
 }

@@ -63,16 +63,16 @@ namespace Match3.ECS.Systems
         {
             state.Enabled = false;
 
-            var config = SystemAPI.GetSingleton<GridConfig>();
+            var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
 
             var cells = state.EntityManager.GetBuffer<GridCell>(gridEntity);
-            cells.Length = config.CellCount;
+            cells.Length = gridConfig.CellCount;
             for (int i = 0; i < cells.Length; i++)
                 cells[i] = new() { Tile = Entity.Null };
 
             var typeCache = state.EntityManager.GetBuffer<GridTileTypeCache>(gridEntity);
-            typeCache.Length = config.CellCount;
+            typeCache.Length = gridConfig.CellCount;
             for (int i = 0; i < typeCache.Length; i++)
                 typeCache[i] = new() { Type = TileType.None };
         }
@@ -166,11 +166,11 @@ namespace Match3.ECS.Systems
             state.EntityManager.DestroyEntity(requestQuery);
         }
 
-        private void GenerateTypes(DynamicBuffer<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig config)
+        private void GenerateTypes(DynamicBuffer<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig gridConfig)
         {
-            for (int y = 0; y < config.Height; y++)
+            for (int y = 0; y < gridConfig.Height; y++)
             {
-                for (int x = 0; x < config.Width; x++)
+                for (int x = 0; x < gridConfig.Width; x++)
                 {
                     allowedTypes.Clear();
 
@@ -178,16 +178,16 @@ namespace Match3.ECS.Systems
                     {
                         if (x >= 2)
                         {
-                            var t1 = typeCache[config.GetIndex(x - 1, y)].Type;
-                            var t2 = typeCache[config.GetIndex(x - 2, y)].Type;
+                            var t1 = typeCache[gridConfig.GetIndex(x - 1, y)].Type;
+                            var t2 = typeCache[gridConfig.GetIndex(x - 2, y)].Type;
                             if (t == t1 && t == t2)
                                 continue;
                         }
 
                         if (y >= 2)
                         {
-                            var t1 = typeCache[config.GetIndex(x, y - 1)].Type;
-                            var t2 = typeCache[config.GetIndex(x, y - 2)].Type;
+                            var t1 = typeCache[gridConfig.GetIndex(x, y - 1)].Type;
+                            var t2 = typeCache[gridConfig.GetIndex(x, y - 2)].Type;
                             if (t == t1 && t == t2)
                                 continue;
                         }
@@ -195,7 +195,7 @@ namespace Match3.ECS.Systems
                         allowedTypes.Add(t);
                     }
 
-                    int idx = config.GetIndex(x, y);
+                    int idx = gridConfig.GetIndex(x, y);
                     int rnd = random.NextInt(0, allowedTypes.Length);
                     typeCache[idx] = new() { Type = allowedTypes[rnd] };
                 }

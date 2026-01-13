@@ -20,7 +20,7 @@ namespace Match3.Core
         {
             var world = World.DefaultGameObjectInjectionWorld;
             if (world == null)
-                throw new InvalidOperationException("ECS World not initialized");
+                throw new InvalidOperationException("[GameLifetimeScope] ECS World not initialized");
             
             builder.RegisterInstance(world.EntityManager);
             

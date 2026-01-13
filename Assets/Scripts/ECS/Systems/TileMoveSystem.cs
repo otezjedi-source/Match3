@@ -56,18 +56,18 @@ namespace Match3.ECS.Systems
     
     public static class TileMoveHelper
     {
-        public static void Start(EntityManager entityMgr, Entity entity, float3 target, float duration, TileState tileState)
+        public static void Start(EntityManager entityManager, Entity entity, float3 target, float duration, TileState tileState)
         {
-            var pos = entityMgr.GetComponentData<TileWorldPos>(entity).Pos;
-            entityMgr.SetComponentData<TileStateData>(entity, new() { State = tileState });
-            entityMgr.SetComponentData<TileMove>(entity, new()
+            var pos = entityManager.GetComponentData<TileWorldPos>(entity).Pos;
+            entityManager.SetComponentData<TileStateData>(entity, new() { State = tileState });
+            entityManager.SetComponentData<TileMove>(entity, new()
             {
                 StartPos = pos,
                 TargetPos = target,
                 Duration = duration,
                 Elapsed = 0
             });
-            entityMgr.SetComponentEnabled<TileMove>(entity, true);
+            entityManager.SetComponentEnabled<TileMove>(entity, true);
         }
     }
 }
