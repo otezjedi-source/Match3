@@ -4,6 +4,10 @@ using VContainer;
 
 namespace Match3.Controllers
 {
+    /// <summary>
+    /// Simple audio playback controller. Plays one-shot sound effects.
+    /// Called by ECS systems via SoundSyncSystem and UI via direct calls.
+    /// </summary>
     public class SoundController
     {
         [Inject] private readonly GameConfig gameConfig;

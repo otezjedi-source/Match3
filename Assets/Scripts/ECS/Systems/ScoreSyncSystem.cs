@@ -3,6 +3,9 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Processes ScoreEvent entities and updates ScoreController.
+    /// </summary>
     [UpdateInGroup(typeof(GameSyncSystemGroup))]
     public partial struct ScoreSyncSystem : ISystem
     {

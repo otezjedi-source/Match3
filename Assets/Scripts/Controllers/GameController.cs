@@ -7,6 +7,10 @@ using VContainer;
 
 namespace Match3.Controllers
 {
+    /// <summary>
+    /// Bridge between ECS game state and the rest of the application.
+    /// Polls ECS singletons and exposes them as reactive properties for UI binding.
+    /// </summary>
     public class GameController : IDisposable
     {
         [Inject] private readonly EntityManager entityManager;
@@ -33,6 +37,7 @@ namespace Match3.Controllers
             CacheQuery<GridStartRequest>();
             CacheQuery<GridResetRequest>();
 
+            // Poll ECS state every frame and sync to reactive properties
             Observable.EveryUpdate()
                 .Where(_ => !isDisposed)
                 .Subscribe(_ => UpdateGameState())
@@ -44,6 +49,7 @@ namespace Match3.Controllers
             if (isDisposed || !WorldExists)
                 return;
 
+            // Sync game phase from ECS singleton
             var gameStateQuery = GetQuery<GameState>();
             if (!gameStateQuery.IsEmpty)
             {
@@ -51,6 +57,7 @@ namespace Match3.Controllers
                 CurrentPhase.Value = gameStateQuery.GetSingleton<GameState>().Phase;
             }
 
+            // Check for game over event (one-shot entity)
             var gameOverQuery = GetQuery<GameOverEvent>();
             if (!gameOverQuery.IsEmpty)
             {
@@ -60,6 +67,22 @@ namespace Match3.Controllers
             }
         }
 
+        /// <summary>
+        /// Request initial grid generation. Used on first load.
+        /// </summary>
+        public void RequestStart()
+        {
+            if (isDisposed || !WorldExists)
+                return;
+
+            var gridStartQuery = GetQuery<GridStartRequest>();
+            if (gridStartQuery.IsEmpty)
+                entityManager.CreateSingleton<GridStartRequest>();
+        }
+
+        /// <summary>
+        /// Request grid reset. Creates a singleton entity that GridResetSystem will process.
+        /// </summary>
         public void RequestRestart()
         {
             if (isDisposed || !WorldExists)
@@ -73,16 +96,6 @@ namespace Match3.Controllers
             scoreController.ResetScore();
         }
 
-        public void RequestStart()
-        {
-            if (isDisposed || !WorldExists)
-                return;
-
-            var gridStartQuery = GetQuery<GridStartRequest>();
-            if (gridStartQuery.IsEmpty)
-                entityManager.CreateSingleton<GridStartRequest>();
-        }
-
         public void Dispose()
         {
             if (isDisposed)
@@ -90,6 +103,7 @@ namespace Match3.Controllers
 
             isDisposed = true;
 
+            // Order matters: stop polling first, then cleanup
             disposables?.Dispose();
             CurrentPhase?.Dispose();
             IsGameOver?.Dispose();

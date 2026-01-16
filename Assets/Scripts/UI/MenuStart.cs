@@ -12,6 +12,9 @@ using VContainer;
 
 namespace Match3.UI
 {
+    /// <summary>
+    /// Start menu with play button and high score display.
+    /// </summary>
     public class MenuStart : MonoBehaviour
     {
         [SerializeField] private TMP_Text highScore;
@@ -63,6 +66,7 @@ namespace Match3.UI
         {
             soundController.PlayBtnClick();
 
+            // Cleanup ECS world
             if (World.DefaultGameObjectInjectionWorld?.IsCreated == true)
                 World.DefaultGameObjectInjectionWorld.Dispose();
                 

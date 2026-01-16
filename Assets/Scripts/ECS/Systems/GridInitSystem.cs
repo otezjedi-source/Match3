@@ -2,10 +2,15 @@ using System;
 using Match3.ECS.Components;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Entities.UniversalDelegates;
 using Random = Unity.Mathematics.Random;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Creates the initial ECS singletons for game state and grid.
+    /// Runs once at startup, then disables itself.
+    /// </summary>
     [UpdateInGroup(typeof(GameInitSystemGroup), OrderFirst = true)]
     public partial struct GridInitSystem : ISystem
     {
@@ -49,6 +54,9 @@ namespace Match3.ECS.Systems
         }
     }
 
+    /// <summary>
+    /// Allocates grid buffers based on config dimensions.
+    /// </summary>
     [UpdateInGroup(typeof(GameInitSystemGroup))]
     [UpdateAfter(typeof(GridInitSystem))]
     public partial struct GridBufferInitSystem : ISystem
@@ -78,6 +86,10 @@ namespace Match3.ECS.Systems
         }
     }
 
+    /// <summary>
+    /// Generates initial tile layout when GridStartRequest is present.
+    /// Ensures no matches exist on initial board and at least one valid move is available.
+    /// </summary>
     [UpdateInGroup(typeof(GameInitSystemGroup))]
     [UpdateAfter(typeof(GridBufferInitSystem))]
     public partial struct GridTilesInitSystem : ISystem
@@ -126,7 +138,8 @@ namespace Match3.ECS.Systems
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
             var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
 
-            GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig);
+            // Generate types, retry if no valid moves exist
+            GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig, matchConfig);
             
             int attempts = 0;
             while (attempts < gridConfig.MaxInitAttempts)
@@ -134,10 +147,11 @@ namespace Match3.ECS.Systems
                 if (PossibleMovesChecker.CheckMoves(ref gridTypesCache, ref gridConfig, ref matchConfig))
                     break;
 
-                GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig);
+                GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig, matchConfig);
                 ++attempts;
             }
 
+            // Create actual tile entities from the generated types
             gridTilesCache.Clear();
             for (int y = 0; y < gridConfig.Height; y++)
             {
@@ -149,6 +163,7 @@ namespace Match3.ECS.Systems
                 }
             }
 
+            // Store tile references in grid buffer
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
             for (int i = 0; i < gridCells.Length; i++)
                 gridCells[i] = new() { Tile = gridTilesCache[i] };
@@ -166,7 +181,14 @@ namespace Match3.ECS.Systems
             state.EntityManager.DestroyEntity(requestQuery);
         }
 
-        private void GenerateTypes(DynamicBuffer<GridTileTypeCache> typeCache, ReadOnlySpan<TileType> types, GridConfig gridConfig)
+        /// <summary>
+        /// Generate tile types ensuring no initial matches.
+        /// For each cell, filters out types that would create a match with neighbors.
+        /// </summary>
+        private void GenerateTypes(
+            DynamicBuffer<GridTileTypeCache> typeCache,
+            ReadOnlySpan<TileType> types,
+            GridConfig gridConfig, MatchConfig matchConfig)
         {
             for (int y = 0; y < gridConfig.Height; y++)
             {
@@ -176,21 +198,10 @@ namespace Match3.ECS.Systems
 
                     foreach (var t in types)
                     {
-                        if (x >= 2)
-                        {
-                            var t1 = typeCache[gridConfig.GetIndex(x - 1, y)].Type;
-                            var t2 = typeCache[gridConfig.GetIndex(x - 2, y)].Type;
-                            if (t == t1 && t == t2)
-                                continue;
-                        }
-
-                        if (y >= 2)
-                        {
-                            var t1 = typeCache[gridConfig.GetIndex(x, y - 1)].Type;
-                            var t2 = typeCache[gridConfig.GetIndex(x, y - 2)].Type;
-                            if (t == t1 && t == t2)
-                                continue;
-                        }
+                        if (CanMatch(x, y, t, -1, 0))
+                            continue;
+                        if (CanMatch(x, y, t, 0, -1))
+                            continue;
 
                         allowedTypes.Add(t);
                     }
@@ -201,9 +212,27 @@ namespace Match3.ECS.Systems
                 }
             }
 
+            // Copy to cache for move validation
             gridTypesCache.Clear();
             for (int i = 0; i < typeCache.Length; i++)
                 gridTypesCache.Add(typeCache[i].Type);
+
+            bool CanMatch(int x, int y, TileType type, int dx, int dy)
+            {
+                for (int i = 1; i < matchConfig.MatchCount; i++)
+                {
+                    int nx = x + dx * i;
+                    int ny = y + dy * i;
+                    if (!gridConfig.IsValidPos(nx, ny))
+                        return false;
+
+                    var prevType = typeCache[gridConfig.GetIndex(nx, ny)].Type;
+                    if (prevType != type)
+                        return false;
+                }
+
+                return true;
+            }
         }
     }
 }

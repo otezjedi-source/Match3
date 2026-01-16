@@ -8,6 +8,9 @@ using VContainer;
 
 namespace Match3.UI
 {
+    /// <summary>
+    /// Game over screen with final score and restart option.
+    /// </summary>
     public class MenuGameOver : MonoBehaviour
     {
         [SerializeField] private TMP_Text score;

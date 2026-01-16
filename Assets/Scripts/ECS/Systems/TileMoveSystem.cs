@@ -5,6 +5,9 @@ using Unity.Mathematics;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Animates tile movement. Parallel job for performance.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(GridCacheSystem))]
@@ -43,7 +46,7 @@ namespace Match3.ECS.Systems
             move.Elapsed += DeltaTime;
 
             float t = math.saturate(move.Elapsed / move.Duration);
-            float ease = t * t;
+            float ease = t * t; // Ease-in quadratic
             worldPos.Pos = math.lerp(move.StartPos, move.TargetPos, ease);
 
             if (t >= 1f)
@@ -54,6 +57,9 @@ namespace Match3.ECS.Systems
         }
     }
     
+    /// <summary>
+    /// Helper for starting tile movement animation.
+    /// </summary>
     public static class TileMoveHelper
     {
         public static void Start(EntityManager entityManager, Entity entity, float3 target, float duration, TileState tileState)

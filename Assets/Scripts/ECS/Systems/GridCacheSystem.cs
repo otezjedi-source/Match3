@@ -6,6 +6,11 @@ using Unity.Jobs;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Rebuilds the tile type cache when grid changes.
+    /// The cache enables fast matching without repeated entity lookups.
+    /// Uses parallel job for better performance on larger grids.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameSystemGroup))]
     public partial struct GridCacheSystem : ISystem
@@ -50,6 +55,7 @@ namespace Match3.ECS.Systems
 
             dirtyFlag.ValueRW.IsDirty = false;
 
+            // Invalidate moves cache since grid changed
             var movesCache = SystemAPI.GetSingletonRW<PossibleMovesCache>();
             movesCache.ValueRW.IsValid = false;
         }

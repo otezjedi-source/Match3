@@ -4,6 +4,9 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Processes player swap requests. Validates and executes tile swaps.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(TileMoveSystem))]
@@ -27,6 +30,7 @@ namespace Match3.ECS.Systems
             var gameState = SystemAPI.GetSingletonRW<GameState>();
             if (gameState.ValueRO.Phase != GamePhase.Idle)
             {
+                // Discard requests during animations
                 if (!playerSwapRequestQuery.IsEmpty)
                     state.EntityManager.DestroyEntity(playerSwapRequestQuery);
                 return;
@@ -60,11 +64,13 @@ namespace Match3.ECS.Systems
                     continue;
                 }
 
+                // Swap tiles in grid
                 var tileA = gridCells[idxA].Tile;
                 var tileB = gridCells[idxB].Tile;
                 gridCells[idxA] = new() { Tile = tileB };
                 gridCells[idxB] = new() { Tile = tileA };
 
+                // Update tile grid positions
                 var tileLookup = SystemAPI.GetComponentLookup<TileData>(true);
                 var tileDataA = tileLookup[tileA];
                 var tileDataB = tileLookup[tileB];
@@ -73,12 +79,14 @@ namespace Match3.ECS.Systems
                 state.EntityManager.SetComponentData(tileA, tileDataA);
                 state.EntityManager.SetComponentData(tileB, tileDataB);
 
+                // Start swap animations
                 TileMoveHelper.Start(state.EntityManager, tileA, new(posB, 0), timingConfig.SwapDuration, TileState.Swap);
                 TileMoveHelper.Start(state.EntityManager, tileB, new(posA, 0), timingConfig.SwapDuration, TileState.Swap);
                 playSound = true;
 
-                var swapEntity = ecb.CreateEntity();
-                ecb.AddComponent(swapEntity, new SwapRequest
+                // Track swap for potential revert if no match
+                var swapRequest = ecb.CreateEntity();
+                ecb.AddComponent(swapRequest, new SwapRequest
                 {
                     TileA = tileA,
                     TileB = tileB,
@@ -103,6 +111,9 @@ namespace Match3.ECS.Systems
         }
     }
 
+    /// <summary>
+    /// Waits for swap animation to complete, then transitions to Match phase.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(SwapSystem))]
@@ -129,6 +140,7 @@ namespace Match3.ECS.Systems
                 var tileA = request.ValueRO.TileA;
                 var tileB = request.ValueRO.TileB;
 
+                // Check if tiles are still moving
                 bool movingA = state.EntityManager.IsComponentEnabled<TileMove>(tileA);
                 bool movingB = state.EntityManager.IsComponentEnabled<TileMove>(tileB);
                 if (movingA || movingB)
@@ -136,10 +148,12 @@ namespace Match3.ECS.Systems
 
                 if (request.ValueRO.IsReverting)
                 {
+                    // Revert complete, back to idle
                     gameState.ValueRW.Phase = GamePhase.Idle;
                     ecb.DestroyEntity(entity);
                 }
                 else
+                    // Swap complete, check for matches
                     gameState.ValueRW.Phase = GamePhase.Match;
             }
         }

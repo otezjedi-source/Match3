@@ -13,6 +13,10 @@ using UnityEngine.AddressableAssets;
 
 namespace Match3.Game
 {
+    /// <summary>
+    /// Visual representation of a tile. Handles sprite loading and animations.
+    /// Paired with an ECS entity that holds the actual game data.
+    /// </summary>
     public class TileView : MonoBehaviour
     {
         [Header("References")]
@@ -27,6 +31,7 @@ namespace Match3.Game
         [SerializeField] private float stretchDuration = 0.1f;
         [SerializeField] private float recoverDuration = 0.1f;
 
+        // Addressable handles for async asset loading
         private readonly AssetHandle<Sprite> spriteHandle = new();
         private readonly AssetHandle<SkeletonDataAsset> clearAnimHandle = new();
 
@@ -36,6 +41,9 @@ namespace Match3.Game
         private bool isCleared;
 
         #region Init
+        /// <summary>
+        /// Initialize the view with tile data. Loads assets asynchronously.
+        /// </summary>
         public void Init(GameConfig.TileData tileData, EntityManager entityManager, Entity entity)
         {
             this.entityManager = entityManager;
@@ -116,6 +124,9 @@ namespace Match3.Game
         #endregion
 
         #region Clear
+        /// <summary>
+        /// Release resources and reset state for pooling.
+        /// </summary>
         public void Clear()
         {
             if (isCleared)
@@ -149,6 +160,9 @@ namespace Match3.Game
         #endregion
 
         #region Animations
+        /// <summary>
+        /// Play tile destruction animation (Spine). Notifies ECS when complete.
+        /// </summary>
         public void PlayClearAnim()
         {
             if (isCleared)
@@ -189,6 +203,9 @@ namespace Match3.Game
             Notify<ClearDoneEvent>();
         }
 
+        /// <summary>
+        /// Play squash-and-stretch animation when tile lands. Notifies ECS when complete.
+        /// </summary>
         public void PlayDropAnim()
         {
             if (isCleared)
@@ -212,6 +229,7 @@ namespace Match3.Game
             {
                 try
                 {
+                    // Classic squash & stretch: squash on impact, stretch up, settle
                     await DOTween.Sequence()
                         .Append(sprite.transform.DOScale(squashScale, squashDuration))
                         .Join(sprite.transform.DOLocalMoveY(squashOffsetY, squashDuration))
@@ -223,6 +241,7 @@ namespace Match3.Game
                 }
                 catch (OperationCanceledException)
                 {
+                    // Reset to normal state if cancelled
                     if (sprite != null && sprite.transform != null)
                     {
                         sprite.transform.localScale = Vector3.one;
@@ -262,6 +281,9 @@ namespace Match3.Game
             }
         }
 
+        /// <summary>
+        /// Add a component to the paired ECS entity to signal animation completion.
+        /// </summary>
         private void Notify<T>() where T : unmanaged, IComponentData
         {
             if (isCleared || entity == Entity.Null)

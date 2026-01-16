@@ -6,6 +6,10 @@ using Unity.Mathematics;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Scans the grid for matching tiles (3+ in a row/column).
+    /// Runs after swap animation completes. If no matches found, reverts the swap.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(SwapCompleteSystem))]
@@ -45,6 +49,7 @@ namespace Match3.ECS.Systems
             var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
             var matchResults = SystemAPI.GetBuffer<MatchResult>(gridEntity);
 
+            // Find all matches using line scanning algorithm
             matchesCache.Clear();
             if (matchesCache.Capacity < gridConfig.CellCount)
                 matchesCache.Capacity = gridConfig.CellCount;
@@ -52,12 +57,14 @@ namespace Match3.ECS.Systems
             ScanLines(matchesCache, typeCache, gridConfig, matchConfig, true);
             ScanLines(matchesCache, typeCache, gridConfig, matchConfig, false);
 
+            // Store results in buffer for other systems to use
             matchResults.Clear();
             foreach (var pos in matchesCache)
                 matchResults.Add(new() { Pos = pos });
 
             if (matchResults.Length > 0)
             {
+                // Matches found - proceed to clear phase
                 MarkMatchedTiles(ref state, matchResults, gridConfig, gridEntity);
 
                 gameState = SystemAPI.GetSingletonRW<GameState>();
@@ -66,6 +73,7 @@ namespace Match3.ECS.Systems
                 return;
             }
 
+            // No matches - check if we need to revert the swap
             bool isReverting = HandleSwaps(ref state, gridEntity, gridConfig, timingConfig);
             if (isReverting)
             {
@@ -75,6 +83,10 @@ namespace Match3.ECS.Systems
             gameState.ValueRW.Phase = isReverting ? GamePhase.Swap : GamePhase.Idle;
         }
 
+        /// <summary>
+        /// Scans all lines (rows or columns) for sequences of matching tiles.
+        /// Uses run-length encoding approach: find start of sequence, extend until type changes.
+        /// </summary>
         [BurstCompile]
         private readonly void ScanLines(
             NativeHashSet<int2> matches,
@@ -101,6 +113,7 @@ namespace Match3.ECS.Systems
                         continue;
                     }
 
+                    // Find end of matching sequence
                     int j = i + 1;
                     while (j < lineLength)
                     {
@@ -114,6 +127,7 @@ namespace Match3.ECS.Systems
                         j++;
                     }
 
+                    // If sequence is long enough, mark all positions as matched
                     if (j - i >= matchConfig.MatchCount)
                     {
                         for (int k = i; k < j; k++)
@@ -145,6 +159,9 @@ namespace Match3.ECS.Systems
             }
         }
 
+        /// <summary>
+        /// If no matches were found after a swap, revert the swap animation.
+        /// </summary>
         private bool HandleSwaps(
             ref SystemState state,
             Entity gridEntity,
@@ -162,9 +179,9 @@ namespace Match3.ECS.Systems
                     ecb.DestroyEntity(entity);
                     continue;
                 }
-                
+
                 RevertSwap(ref state, ref request.ValueRW, gridEntity, gridConfig, timingConfig);
-                isReverting = true;   
+                isReverting = true;
             }
             return isReverting;
         }
@@ -178,12 +195,14 @@ namespace Match3.ECS.Systems
         {
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
 
+            // Swap tiles back in grid buffer
             var idxA = gridConfig.GetIndex(request.PosA);
             var idxB = gridConfig.GetIndex(request.PosB);
 
             gridCells[idxA] = new() { Tile = request.TileA };
             gridCells[idxB] = new() { Tile = request.TileB };
 
+            // Update tile positions
             var dataA = state.EntityManager.GetComponentData<TileData>(request.TileA);
             var dataB = state.EntityManager.GetComponentData<TileData>(request.TileB);
             dataA.GridPos = request.PosA;
@@ -191,6 +210,7 @@ namespace Match3.ECS.Systems
             state.EntityManager.SetComponentData(request.TileA, dataA);
             state.EntityManager.SetComponentData(request.TileB, dataB);
 
+            // Start reverse animation
             TileMoveHelper.Start(state.EntityManager, request.TileA, new(request.PosA, 0), timingConfig.SwapDuration, TileState.Swap);
             TileMoveHelper.Start(state.EntityManager, request.TileB, new(request.PosB, 0), timingConfig.SwapDuration, TileState.Swap);
 

@@ -5,6 +5,9 @@ using VContainer;
 
 namespace Match3.UI
 {
+    /// <summary>
+    /// Main game UI. Manages menu visibility based on game state.
+    /// </summary>
     public class GameUI : MonoBehaviour
     {
         [SerializeField] private MenuGame menuGame;
@@ -18,6 +21,7 @@ namespace Match3.UI
         {
             ShowGameMenu();
 
+            // Switch to game over when game ends
             gameController.IsGameOver
                 .Where(isGameOver => isGameOver)
                 .Subscribe(_ => ShowGameOverMenu())

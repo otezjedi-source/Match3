@@ -4,6 +4,9 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Processes PlaySoundRequest entities and triggers audio.
+    /// </summary>
     [UpdateInGroup(typeof(GameSyncSystemGroup))]
     public partial struct SoundSyncSystem : ISystem
     {

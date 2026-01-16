@@ -6,6 +6,10 @@ using Random = UnityEngine.Random;
 
 namespace Match3.Controllers
 {
+    /// <summary>
+    /// Registry of available tile types. Used by FillSystem to spawn random tiles.
+    /// Initialized from GameConfig at startup.
+    /// </summary>
     public class TileTypeRegistry
     {
         private readonly TileType[] types;
@@ -20,6 +24,9 @@ namespace Match3.Controllers
                 types[i] = gameConfig.TilesData[i].type;
         }
 
+        /// <summary>
+        /// Get a random tile type for spawning new tiles.
+        /// </summary>
         public TileType GetRandomType()
         {
             int idx = Random.Range(0, types.Length);

@@ -10,6 +10,11 @@ using Object = UnityEngine.Object;
 
 namespace Match3.Factories
 {
+    /// <summary>
+    /// Factory for creating and pooling tile entities.
+    /// Each tile consists of an ECS entity (data) and a TileView (visual).
+    /// Pooling prevents GC allocations during gameplay.
+    /// </summary>
     public class TileFactory : IDisposable
     {
         [Inject] private readonly TileView tilePrefab;
@@ -18,6 +23,8 @@ namespace Match3.Factories
         [Inject] private readonly EntityManager entityManager;
 
         private readonly Queue<Entity> pool = new();
+
+        // O(1) lookup instead of List.Find() on every tile creation
         private Dictionary<TileType, GameConfig.TileData> tileDataCache;
         private bool isDisposed;
 
@@ -36,6 +43,10 @@ namespace Match3.Factories
             }
         }
 
+        /// <summary>
+        /// Get a tile from pool or create new one.
+        /// Position is in grid coordinates (will be converted to world space).
+        /// </summary>
         public Entity Create(int x, int y, TileType type)
         {
             if (isDisposed)
@@ -51,12 +62,14 @@ namespace Match3.Factories
             {
                 entity = pool.Dequeue();
 
+                // Entity might have been destroyed externally
                 if (!entityManager.Exists(entity))
                 {
                     Debug.LogWarning("[TileFactory] Tile entity doesn't exist. Creating new tile");
                     return CreateTile(x, y, type);
                 }
 
+                // Reset entity components to new state
                 entityManager.SetComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
                 entityManager.SetComponentData<TileStateData>(entity, new() { State = TileState.Idle });
                 entityManager.SetComponentData<TileWorldPos>(entity, new() { Pos = new(x, y, 0) });
@@ -85,6 +98,7 @@ namespace Match3.Factories
             var entity = entityManager.CreateEntity();
             var view = Object.Instantiate(tilePrefab, new(x, y), Quaternion.identity, parent);
 
+            // Add all required components
             entityManager.AddComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
             entityManager.AddComponentData<TileStateData>(entity, new() { State = TileState.Idle });
             entityManager.AddComponentData<TileWorldPos>(entity, new() { Pos = new(x, y, 0) });
@@ -106,6 +120,9 @@ namespace Match3.Factories
             view.Init(data, entityManager, entity);
         }
 
+        /// <summary>
+        /// Return tile to pool for reuse. Clears visual state but keeps entity alive.
+        /// </summary>
         public void Return(Entity entity)
         {
             if (isDisposed || !entityManager.Exists(entity))
@@ -126,6 +143,7 @@ namespace Match3.Factories
             }
             catch (MissingReferenceException)
             {
+                // View was destroyed during Clear(), just cleanup entity
                 entityManager.DestroyEntity(entity);
             }
         }
@@ -151,6 +169,7 @@ namespace Match3.Factories
                 return;
             }
 
+            // Cleanup all pooled entities and their views
             while (pool.Count > 0)
             {
                 var entity = pool.Dequeue();

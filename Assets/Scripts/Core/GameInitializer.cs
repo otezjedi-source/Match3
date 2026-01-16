@@ -11,6 +11,10 @@ using VContainer.Unity;
 
 namespace Match3.Core
 {
+    /// <summary>
+    /// Entry point for the game scene. Initializes ECS systems and controllers.
+    /// Implements VContainer interfaces for automatic lifecycle management.
+    /// </summary>
     public class GameInitializer : IStartable, ITickable, IDisposable
     {
         [Inject] private readonly InputController inputController;
@@ -25,6 +29,9 @@ namespace Match3.Core
         private EntityManager entityManager;
         private CancellationTokenSource cts;
 
+        /// <summary>
+        /// Called by VContainer after all dependencies are injected.
+        /// </summary>
         public void Start()
         {
             cts = new();
@@ -38,15 +45,20 @@ namespace Match3.Core
                 world = World.DefaultGameObjectInjectionWorld;
                 entityManager = world.EntityManager;
 
+                // Create singleton entity with references to managed objects
+                // This allows ECS systems to access controllers and factories
                 CreateManagedRefs();
                 EnableSystems(true);
 
+                // Initialize controllers
                 inputController.Init();
                 gameController.Init();
                 tileFactory.Init();
 
+                // Request initial grid generation
                 gameController.RequestStart();
 
+                // Wait until grid is ready (GridStartRequest consumed)
                 var query = entityManager.CreateEntityQuery(typeof(GridStartRequest));
                 try
                 {
@@ -60,6 +72,9 @@ namespace Match3.Core
             }
         }
 
+        /// <summary>
+        /// Called by VContainer every frame.
+        /// </summary>
         public void Tick()
         {
             inputController.Update();
@@ -74,6 +89,10 @@ namespace Match3.Core
             EnableSystems(false);
         }
 
+        /// <summary>
+        /// Create or update the ManagedReferences singleton that ECS systems use
+        /// to access managed objects (controllers, factories).
+        /// </summary>
         private void CreateManagedRefs()
         {
             var query = entityManager.CreateEntityQuery(typeof(ManagedReferences));
@@ -89,6 +108,7 @@ namespace Match3.Core
                 return;
             }
 
+            // Create new singleton
             var newEntity = entityManager.CreateEntity();
             entityManager.AddComponentObject(newEntity, new ManagedReferences
             {
@@ -100,6 +120,10 @@ namespace Match3.Core
             query.Dispose();
         }
 
+        /// <summary>
+        /// Enable/disable game system groups. Systems are disabled by default
+        /// and only enabled when the game scene is active.
+        /// </summary>
         private void EnableSystems(bool enabled)
         {
             if (world?.IsCreated != true)

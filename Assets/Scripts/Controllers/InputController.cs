@@ -10,6 +10,10 @@ using VContainer;
 
 namespace Match3.Controllers
 {
+    /// <summary>
+    /// Handles player input and converts drag gestures into swap requests.
+    /// Creates PlayerSwapRequest entities that SwapSystem processes.
+    /// </summary>
     public class InputController : IDisposable
     {
         [Inject] private readonly GameConfig gameConfig;
@@ -31,6 +35,7 @@ namespace Match3.Controllers
             if (isDisposed)
                 throw new ObjectDisposedException("[InputController] Trying to init disposed");
 
+            // Cleanup previous state if Init called multiple times
             DisposeQuery();
             DisposeInputActions();
 
@@ -40,6 +45,7 @@ namespace Match3.Controllers
 
             gameStateQuery = entityManager.CreateEntityQuery(typeof(GameState));
 
+            // Setup input actions (generated from InputSystem asset)
             inputActions = new InputSystem_Actions();
             inputActions.UI.Enable();
             inputActions.UI.Click.performed += OnClick;
@@ -81,6 +87,9 @@ namespace Match3.Controllers
             inputActions = null;
         }
 
+        /// <summary>
+        /// Called from GameInitializer.Tick() every frame.
+        /// </summary>
         public void Update()
         {
             if (!isInitialized || isDisposed)
@@ -90,6 +99,9 @@ namespace Match3.Controllers
                 HandleDrag();
         }
 
+        /// <summary>
+        /// Only allow input during Idle phase (no animations in progress).
+        /// </summary>
         private bool CanInput()
         {
             if (gameStateQuery.Equals(default) || gameStateQuery.IsEmpty)
@@ -130,11 +142,14 @@ namespace Match3.Controllers
             }
         }
 
+        /// <summary>
+        /// While dragging, check if player has moved far enough to trigger a swap.
+        /// </summary>
         private void HandleDrag()
         {
             if (inputActions == null || mainCamera == null)
                 return;
-                
+
             var screenPos = inputActions.UI.Point.ReadValue<Vector2>();
             float3 currentWorldPos = mainCamera.ScreenToWorldPoint(screenPos);
             float dragDistance = math.distance(dragStartWorldPosition, currentWorldPos);
@@ -145,6 +160,7 @@ namespace Match3.Controllers
                 var targetPos = GetTargetFromDirection(dragDirection);
                 if (IsValidPos(targetPos.x, targetPos.y))
                 {
+                    // Create swap request entity for ECS to process
                     var request = entityManager.CreateEntity();
                     entityManager.AddComponentData<PlayerSwapRequest>(request, new() { PosA = dragStartPos, PosB = targetPos });
                     isDragging = false;
@@ -157,6 +173,9 @@ namespace Match3.Controllers
             isDragging = false;
         }
 
+        /// <summary>
+        /// Convert drag direction to target grid cell (up/down/left/right only).
+        /// </summary>
         private int2 GetTargetFromDirection(float3 direction)
         {
             int targetX = dragStartPos.x;

@@ -3,6 +3,9 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Resets grid for new game. Returns all tiles to pool.
+    /// </summary>
     [UpdateInGroup(typeof(GameInitSystemGroup))]
     [UpdateBefore(typeof(GridTilesInitSystem))]
     public partial struct GridResetSystem : ISystem
@@ -27,6 +30,7 @@ namespace Match3.ECS.Systems
             var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
             var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
 
+            // Return all tiles to pool
             for (int i = 0; i < gridCells.Length; i++)
             {
                 if (!gridCells[i].IsEmpty)
@@ -46,6 +50,7 @@ namespace Match3.ECS.Systems
             var movesCache = SystemAPI.GetComponentRW<PossibleMovesCache>(gridEntity);
             movesCache.ValueRW.IsValid = false;
 
+            // Consume reset request and trigger regeneration
             state.EntityManager.DestroyEntity(requestQuery);
             state.EntityManager.CreateSingleton<GridStartRequest>();
         }

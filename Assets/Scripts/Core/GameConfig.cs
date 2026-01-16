@@ -6,6 +6,10 @@ using UnityEngine.AddressableAssets;
 
 namespace Match3.Core
 {
+    /// <summary>
+    /// Central game configuration. Edit in Unity Inspector.
+    /// Validated both in editor (OnValidate) and at runtime (Validate).
+    /// </summary>
     [CreateAssetMenu(fileName = "GameConfig", menuName = "Match3/GameConfig")]
     public class GameConfig : ScriptableObject
     {
@@ -69,8 +73,11 @@ namespace Match3.Core
                 spriteRef != null &&
                 spriteRef.RuntimeKeyIsValid();
         }
-        
+
 #if UNITY_EDITOR
+        /// <summary>
+        /// Editor-time validation. Clamps values to valid ranges.
+        /// </summary>
         private void OnValidate()
         {
             // Ensure minimum grid size

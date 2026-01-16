@@ -4,6 +4,10 @@ using UnityEngine;
 
 namespace Match3.Controllers
 {
+    /// <summary>
+    /// Tracks active loading operations. UI binds to IsLoading to show/hide loading screen.
+    /// Uses reference counting: multiple operations can run concurrently.
+    /// </summary>
     public class LoadingController : IDisposable
     {
         public IReadOnlyReactiveProperty<bool> IsLoading { get; }
@@ -14,6 +18,7 @@ namespace Match3.Controllers
 
         public LoadingController()
         {
+            // Convert operation count to boolean for UI binding
             IsLoading = activeOperations
                 .Select(count => count > 0)
                 .ToReactiveProperty();
@@ -22,6 +27,10 @@ namespace Match3.Controllers
                 disposable.AddTo(disposables);
         }
 
+        /// <summary>
+        /// Start a loading operation. Returns IDisposable - dispose when operation completes.
+        /// Usage: using (loadingController.BeginLoading()) { await SomeAsyncOp(); }
+        /// </summary>
         public IDisposable BeginLoading()
         {
             if (isDisposed)

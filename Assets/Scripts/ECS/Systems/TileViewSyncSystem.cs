@@ -3,6 +3,10 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Syncs ECS tile positions to MonoBehaviour transforms.
+    /// Handles drop squash animation.
+    /// </summary>
     [UpdateInGroup(typeof(GameSyncSystemGroup))]
     public partial struct TileViewSyncSystem : ISystem
     {
@@ -20,6 +24,9 @@ namespace Match3.ECS.Systems
             CompleteDropAnims(ref state);
         }
 
+        /// <summary>
+        /// Update view positions for moving tiles.
+        /// </summary>
         private readonly void SyncMovingTiles(ref SystemState state)
         {
             foreach (var (worldPos, viewData) in
@@ -31,6 +38,9 @@ namespace Match3.ECS.Systems
 
         }
 
+        /// <summary>
+        /// Start squash animation when tile lands.
+        /// </summary>
         private readonly void StartDropAnims(ref SystemState state, ManagedReferences refs)
         {
             var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -51,6 +61,7 @@ namespace Match3.ECS.Systems
                 if (stateData.ValueRO.State != TileState.Fall)
                     continue;
 
+                // Start squash animation
                 viewData.View.PlayDropAnim();
                 ecb.AddComponent<DropTag>(entity);
                 playSound = true;

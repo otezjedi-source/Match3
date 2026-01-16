@@ -5,6 +5,10 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Checks if any valid moves exist. Triggers game over if no moves are possible.
+    /// Runs during Idle phase after all animations complete.
+    /// </summary>
     [BurstCompile]
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(FallSystem))]
@@ -36,6 +40,7 @@ namespace Match3.ECS.Systems
             if (gameState.ValueRO.Phase != GamePhase.Idle)
                 return;
 
+            // Only recalculate when grid has changed (dirty flag cleared = cache invalid)
             var movesCache = SystemAPI.GetSingletonRW<PossibleMovesCache>();
             if (!movesCache.ValueRO.IsValid)
             {
@@ -44,6 +49,7 @@ namespace Match3.ECS.Systems
                 var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
                 var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
 
+                // Copy types to native list for move checking
                 gridTypesCache.Clear();
                 for (int i = 0; i < typeCache.Length; i++)
                     gridTypesCache.Add(typeCache[i].Type);
@@ -53,6 +59,7 @@ namespace Match3.ECS.Systems
                 movesCache.ValueRW.IsValid = true;
             }
 
+            // No moves = game over
             if (!movesCache.ValueRO.HasMoves)
             {
                 gameState.ValueRW.Phase = GamePhase.GameOver;
@@ -61,9 +68,17 @@ namespace Match3.ECS.Systems
         }
     }
     
+    /// <summary>
+    /// Static helper for checking if any valid swap exists.
+    /// Used both by PossibleMovesSystem and GridTilesInitSystem.
+    /// </summary>
     [BurstCompile]
     public static class PossibleMovesChecker
     {
+        /// <summary>
+        /// Brute force check: try every possible swap and see if it creates a match.
+        /// O(width * height * 4) complexity, but grid is small so it's fine.
+        /// </summary>
         [BurstCompile]
         public static bool CheckMoves(ref NativeList<TileType> types, ref GridConfig gridConfig, ref MatchConfig matchConfig)
         {
@@ -71,9 +86,11 @@ namespace Match3.ECS.Systems
             {
                 for (int y = 0; y < gridConfig.Height; y++)
                 {
+                    // Try swap right
                     if (x < gridConfig.Width - 1 && TrySwapCheck(ref types, x, y, x + 1, y, ref gridConfig, ref matchConfig))
                         return true;
 
+                    // Try swap up
                     if (y < gridConfig.Height - 1 && TrySwapCheck(ref types, x, y, x, y + 1, ref gridConfig, ref matchConfig))
                         return true;
                 }
@@ -81,6 +98,9 @@ namespace Match3.ECS.Systems
             return false;
         }
 
+        /// <summary>
+        /// Temporarily swap two tiles, check for match, then swap back.
+        /// </summary>
         [BurstCompile]
         private static bool TrySwapCheck(
             ref NativeList<TileType> types,
@@ -96,18 +116,24 @@ namespace Match3.ECS.Systems
             if (typeA == TileType.None || typeB == TileType.None)
                 return false;
 
+            // Swap
             types[idx1] = typeB;
             types[idx2] = typeA;
 
+            // Check both positions for matches
             bool hasMatch = HasMatchAt(ref types, x1, y1, ref gridConfig, ref matchConfig) ||
                            HasMatchAt(ref types, x2, y2, ref gridConfig, ref matchConfig);
 
+            // Swap back
             types[idx1] = typeA;
             types[idx2] = typeB;
 
             return hasMatch;
         }
 
+        /// <summary>
+        /// Check if position is part of a match (horizontally or vertically).
+        /// </summary>
         [BurstCompile]
         private static bool HasMatchAt(
             ref NativeList<TileType> types,

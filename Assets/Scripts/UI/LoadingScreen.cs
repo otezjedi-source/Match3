@@ -5,6 +5,9 @@ using VContainer;
 
 namespace Match3.UI
 {
+    /// <summary>
+    /// Loading overlay. Persists across scenes (DontDestroyOnLoad).
+    /// </summary>
     public class LoadingScreen : MonoBehaviour
     {
         [SerializeField] private CanvasGroup canvasGroup;

@@ -2,10 +2,17 @@ using Newtonsoft.Json;
 
 namespace Match3.Save
 {
+    /// <summary>
+    /// Serializable save data model. Add new fields as needed.
+    /// Uses Newtonsoft.Json for serialization.
+    /// </summary>
     public class SaveData
     {
         public int HighScore { get; set; }
 
+        /// <summary>
+        /// Deserialize from JSON. Returns empty SaveData on failure.
+        /// </summary>
         public static SaveData FromJson(string json)
         {
             if (string.IsNullOrEmpty(json))

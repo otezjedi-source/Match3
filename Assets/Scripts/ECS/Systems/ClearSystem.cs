@@ -3,6 +3,9 @@ using Unity.Entities;
 
 namespace Match3.ECS.Systems
 {
+    /// <summary>
+    /// Starts clear animations for matched tiles. Awards score.
+    /// </summary>
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(MatchSystem))]
     public partial struct ClearSystem : ISystem
@@ -26,10 +29,12 @@ namespace Match3.ECS.Systems
             if (gameState.ValueRO.Phase != GamePhase.Clear)
                 return;
 
+            // Wait for delay timer
             gameState.ValueRW.PhaseTimer -= SystemAPI.Time.DeltaTime;
             if (gameState.ValueRO.PhaseTimer > 0)
                 return;
 
+            // Wait for clear animations to finish
             if (!clearQuery.IsEmpty)
                 return;
 
@@ -48,7 +53,8 @@ namespace Match3.ECS.Systems
             var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             int clearCount = 0;
 
-            foreach (var (tileData, viewData, entity) in 
+            // Start clear animation for each matched tile
+            foreach (var (tileData, viewData, entity) in
                 SystemAPI.Query<RefRO<TileData>, TileViewData>()
                     .WithAll<MatchTag>()
                     .WithNone<ClearTag>()
@@ -57,6 +63,7 @@ namespace Match3.ECS.Systems
                 if (viewData.View != null)
                     viewData.View.PlayClearAnim();
 
+                // Remove tile from grid
                 var idx = gridConfig.GetIndex(tileData.ValueRO.GridPos);
                 gridCells[idx] = new() { Tile = Entity.Null };
                 ecb.AddComponent<ClearTag>(entity);
@@ -65,9 +72,11 @@ namespace Match3.ECS.Systems
 
             if (clearCount > 0)
             {
+                // Award score
                 var scoreEntity = ecb.CreateEntity();
                 ecb.AddComponent(scoreEntity, new ScoreEvent { Points = clearCount * matchConfig.PointsPerTile });
 
+                // Play sound
                 var soundEntity = ecb.CreateEntity();
                 ecb.AddComponent(soundEntity, new PlaySoundRequest { Type = SoundType.Match });
 
@@ -75,11 +84,15 @@ namespace Match3.ECS.Systems
                 dirtyFlag.ValueRW.IsDirty = true;
             }
 
+            // Cleanup swap request
             foreach (var (_, entity) in SystemAPI.Query<RefRO<SwapRequest>>().WithEntityAccess())
                 ecb.DestroyEntity(entity);
         }
     }
 
+    /// <summary>
+    /// Returns cleared tiles to pool after animation completes.
+    /// </summary>
     [UpdateInGroup(typeof(GameSystemGroup))]
     [UpdateAfter(typeof(ClearSystem))]
     public partial struct ClearCompleteSystem : ISystem

@@ -8,6 +8,10 @@ using VContainer;
 
 namespace Match3.Controllers
 {
+    /// <summary>
+    /// Manages current score and high score persistence.
+    /// Exposes reactive properties for UI binding.
+    /// </summary>
     public class ScoreController : IDisposable
     {
         [Inject] private readonly ISaveController saveController;
@@ -21,10 +25,14 @@ namespace Match3.Controllers
         private SaveData saveData;
         private bool isDisposed;
 
+        /// <summary>
+        /// True if current score exceeds previous high score.
+        /// </summary>
         public bool IsNewHighScore { get; private set; } = false;
 
         public ScoreController()
         {
+            // Auto-update high score when current score exceeds it
             Score
                 .Where(_ => !isDisposed)
                 .Where(score => score > HighScore.Value)
@@ -32,6 +40,9 @@ namespace Match3.Controllers
                 .AddTo(disposables);
         }
 
+        /// <summary>
+        /// Load saved high score. Must be called before gameplay.
+        /// </summary>
         public async UniTask InitAsync()
         {
             if (isDisposed)
@@ -51,6 +62,9 @@ namespace Match3.Controllers
             }
         }
 
+        /// <summary>
+        /// Add points to current score. Called by ScoreSyncSystem.
+        /// </summary>
         public void AddScore(int points)
         {
             if (isDisposed)
@@ -61,10 +75,13 @@ namespace Match3.Controllers
                 Debug.LogWarning($"[ScoreController] Attempted to add {points} points");
                 return;
             }
-            
+
             Score.Value += points;
         }
 
+        /// <summary>
+        /// Reset score for new game.
+        /// </summary>
         public void ResetScore()
         {
             if (isDisposed)
@@ -86,8 +103,10 @@ namespace Match3.Controllers
                 saveData.HighScore = newHighScore;
                 IsNewHighScore = true;
 
+                // Debounced save: cancel pending save and start new one
                 CancelPendingSave();
                 saveCts = new();
+
                 SaveAsync(saveCts.Token).Forget(ex =>
                 {
                     if (ex is not OperationCanceledException)
@@ -96,6 +115,9 @@ namespace Match3.Controllers
             }
         }
 
+        /// <summary>
+        /// Reset high score to zero.
+        /// </summary>
         public void ResetHighScore()
         {
             if (isDisposed)
@@ -112,6 +134,7 @@ namespace Match3.Controllers
 
             try
             {
+                // Small delay to batch rapid score changes
                 await UniTask.Delay(100, cancellationToken: ct);
                 if (isDisposed || ct.IsCancellationRequested)
                     return;
@@ -151,6 +174,8 @@ namespace Match3.Controllers
             isDisposed = true;
 
             CancelPendingSave();
+
+            // Final save on dispose if we have unsaved high score
             if (saveData != null && IsNewHighScore)
                 saveController.SaveAsync(saveData).Forget(ex => Debug.LogError($"[ScoreController] Failed to save on dispose: {ex}"));
 

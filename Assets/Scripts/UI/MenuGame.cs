@@ -8,6 +8,9 @@ using VContainer;
 
 namespace Match3.UI
 {
+    /// <summary>
+    /// In-game HUD with score display and back button.
+    /// </summary>
     public class MenuGame : MonoBehaviour
     {
         [SerializeField] private TMP_Text score;
@@ -23,6 +26,7 @@ namespace Match3.UI
                 .Subscribe(_ => OnBtnBackClick())
                 .AddTo(this);
 
+            // Auto-update score display
             scoreController.Score
                 .Subscribe(score => UpdateScore(score))
                 .AddTo(this);
