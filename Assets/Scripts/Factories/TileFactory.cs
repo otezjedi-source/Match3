@@ -1,5 +1,7 @@
 using System;
 using System.Collections.Generic;
+using System.Threading;
+using Cysharp.Threading.Tasks;
 using Match3.Core;
 using Match3.ECS.Components;
 using Match3.Game;
@@ -23,15 +25,19 @@ namespace Match3.Factories
         [Inject] private readonly EntityManager entityManager;
 
         private readonly Queue<Entity> pool = new();
+        private readonly HashSet<UniTask> loadingTasks = new();
 
         // O(1) lookup instead of List.Find() on every tile creation
         private Dictionary<TileType, GameConfig.TileData> tileDataCache;
+        private CancellationTokenSource cts;
         private bool isDisposed;
 
         public void Init()
         {
             if (isDisposed)
                 throw new ObjectDisposedException("[TileFactory] Trying to init disposed");
+
+            cts = new();
 
             tileDataCache = new(gameConfig.TilesData.Count);
             foreach (var tileData in gameConfig.TilesData)
@@ -89,7 +95,8 @@ namespace Match3.Factories
             else
                 return CreateTile(x, y, type);
 
-            InitView(view, type, entity);
+            var task = InitViewAsync(view, type, entity);
+            loadingTasks.Add(task);
             return entity;
         }
 
@@ -106,18 +113,54 @@ namespace Match3.Factories
             entityManager.AddComponentObject(entity, new TileViewData { View = view });
             entityManager.SetComponentEnabled<TileMove>(entity, false);
 
-            InitView(view, type, entity);
+            var task = InitViewAsync(view, type, entity);
+            loadingTasks.Add(task);
             return entity;
         }
 
-        private void InitView(TileView view, TileType type, Entity entity)
+        private async UniTask InitViewAsync(TileView view, TileType type, Entity entity)
         {
             if (!tileDataCache.TryGetValue(type, out var data))
             {
                 Debug.LogWarning($"[TileFactory] Data not found for type: {type}");
                 return;
             }
-            view.Init(data, entityManager, entity);
+
+            try
+            {
+                if (cts == null || cts.IsCancellationRequested)
+                    return;
+
+                await view.InitAsync(data, entityManager, entity);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[TileFactory] Failed to init view: {ex.Message}");
+            }
+        }
+
+        /// <summary>
+        /// Waits for all tiles loading operations to complete
+        /// </summary>
+        public async UniTask WaitForTilesLoaded(CancellationToken ct = default)
+        {
+            if (isDisposed || loadingTasks.Count == 0)
+                return;
+
+            var tasks = new UniTask[loadingTasks.Count];
+            loadingTasks.CopyTo(tasks);
+            loadingTasks.Clear();
+
+            using var linkedCts = cts != null
+                ? CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct)
+                : CancellationTokenSource.CreateLinkedTokenSource(ct);
+
+            try
+            {
+                await UniTask.WhenAll(tasks).AttachExternalCancellation(linkedCts.Token);
+            }
+            catch (OperationCanceledException) { }
         }
 
         /// <summary>
@@ -161,6 +204,19 @@ namespace Match3.Factories
                 return;
 
             isDisposed = true;
+
+            if (cts != null)
+            {
+                try
+                {
+                    cts.Cancel();
+                    cts.Dispose();
+                }
+                catch (ObjectDisposedException) { }
+                cts = null;
+            }
+
+            loadingTasks.Clear();
 
             if (World.DefaultGameObjectInjectionWorld?.IsCreated == true)
             {

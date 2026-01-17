@@ -69,6 +69,12 @@ namespace Match3.Core
                 {
                     query.Dispose();
                 }
+
+                try
+                {
+                    await tileFactory.WaitForTilesLoaded();
+                }
+                catch (OperationCanceledException) { }
             }
         }
 

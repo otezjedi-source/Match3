@@ -44,7 +44,7 @@ namespace Match3.Game
         /// <summary>
         /// Initialize the view with tile data. Loads assets asynchronously.
         /// </summary>
-        public void Init(GameConfig.TileData tileData, EntityManager entityManager, Entity entity)
+        public async UniTask InitAsync(GameConfig.TileData tileData, EntityManager entityManager, Entity entity, CancellationToken externalCt = default)
         {
             this.entityManager = entityManager;
             this.entity = entity;
@@ -53,9 +53,17 @@ namespace Match3.Game
             ResetCts();
             ResetTransforms();
 
-            var token = cts.Token;
-            InitSpriteAsync(tileData.spriteRef, token).Forget(ex => Debug.LogError($"[TileView] Failed InitSpriteAsync: {ex.Message}"));
-            InitClearAnimAsync(tileData.clearAnimRef, token).Forget(ex => Debug.LogError($"[TileView] Failed InitClearAnimAsync: {ex.Message}"));
+            using var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, externalCt);
+            var token = linkedCts.Token;
+
+            try
+            {
+                await UniTask.WhenAll(
+                    InitSpriteAsync(tileData.spriteRef, token),
+                    InitClearAnimAsync(tileData.clearAnimRef, token)
+                );
+            }
+            catch (OperationCanceledException) { }
         }
 
         private async UniTask InitSpriteAsync(AssetReference spriteRef, CancellationToken ct)
@@ -68,13 +76,17 @@ namespace Match3.Game
             try
             {
                 var result = await spriteHandle.LoadAsync(spriteRef, ct);
-                if (ct.IsCancellationRequested || result == null)
+                if (ct.IsCancellationRequested || isCleared || result == null)
                     return;
 
                 sprite.sprite = result;
                 sprite.gameObject.SetActive(true);
             }
             catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[TileView] Failed InitSpriteAsync: {ex.Message}");
+            }
         }
 
         private async UniTask InitClearAnimAsync(AssetReference clearAnimRef, CancellationToken ct)
@@ -87,13 +99,17 @@ namespace Match3.Game
             try
             {
                 var result = await clearAnimHandle.LoadAsync(clearAnimRef, ct);
-                if (ct.IsCancellationRequested || result == null)
+                if (ct.IsCancellationRequested || isCleared || result == null)
                     return;
 
                 clearAnimation.skeletonDataAsset = result;
                 clearAnimation.Initialize(true);
             }
             catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[TileView] Failed InitClearAnimAsync: {ex.Message}");
+            }
         }
         
         private void OnDestroy()
