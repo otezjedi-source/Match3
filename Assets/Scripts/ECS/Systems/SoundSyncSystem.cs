@@ -27,27 +27,8 @@ namespace Match3.ECS.Systems
 
             foreach (var (request, entity) in SystemAPI.Query<RefRO<PlaySoundRequest>>().WithEntityAccess())
             {
-                Play(refs.SoundController, request.ValueRO.Type);
+                refs.SoundController.Play(request.ValueRO.Type);
                 ecb.DestroyEntity(entity);
-            }
-        }
-        
-        private readonly void Play(SoundController soundController, SoundType type)
-        {
-            switch (type)
-            {
-                case SoundType.Swap:
-                    soundController.PlaySwap();
-                    break;
-                case SoundType.Match:
-                    soundController.PlayMatch();
-                    break;
-                case SoundType.Drop:
-                    soundController.PlayDrop();
-                    break;
-                case SoundType.BtnClick:
-                    soundController.PlayBtnClick();
-                    break;
             }
         }
     }

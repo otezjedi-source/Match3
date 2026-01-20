@@ -2,7 +2,6 @@ using System;
 using Match3.ECS.Components;
 using Unity.Collections;
 using Unity.Entities;
-using Unity.Entities.UniversalDelegates;
 using Random = Unity.Mathematics.Random;
 
 namespace Match3.ECS.Systems
@@ -207,8 +206,12 @@ namespace Match3.ECS.Systems
                     }
 
                     int idx = gridConfig.GetIndex(x, y);
-                    int rnd = random.NextInt(0, allowedTypes.Length);
-                    typeCache[idx] = new() { Type = allowedTypes[rnd] };
+                    TileType type;
+                    if (allowedTypes.Length == 0)
+                        type = types[random.NextInt(types.Length)];
+                    else
+                        type = allowedTypes[random.NextInt(allowedTypes.Length)];
+                    typeCache[idx] = new() { Type = type };
                 }
             }
 

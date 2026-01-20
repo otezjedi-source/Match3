@@ -210,10 +210,7 @@ namespace Match3.Game
                 {
                     await WaitForAnimationComplete(clearAnimation, cts.Token);
                 }
-                catch (OperationCanceledException)
-                {
-                    return;
-                }
+                catch (OperationCanceledException) { }
             }
 
             Notify<ClearDoneEvent>();
@@ -263,7 +260,6 @@ namespace Match3.Game
                         sprite.transform.localScale = Vector3.one;
                         sprite.transform.localPosition = Vector3.zero;
                     }
-                    return;
                 }
             }
 

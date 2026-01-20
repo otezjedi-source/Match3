@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using Match3.Controllers;
+using Match3.ECS.Components;
 using TMPro;
 using UniRx;
 using UnityEngine;
@@ -39,7 +40,7 @@ namespace Match3.UI
 
         private void OnBtnBackClick()
         {
-            soundController.PlayBtnClick();
+            soundController.Play(SoundType.BtnClick);
             sceneLoader.LoadStartSceneAsync().Forget();
         }
     }

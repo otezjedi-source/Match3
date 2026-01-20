@@ -55,11 +55,8 @@ namespace Match3.Core
         [Header("Tiles Data")]
         public List<TileData> TilesData;
 
-        [Header("Sounds")]
-        public AudioClip ButtonClickSound;
-        public AudioClip SwapSound;
-        public AudioClip MatchSound;
-        public AudioClip DropSound;
+        [Header("Sounds data")]
+        public List<SoundData> SoundsData;
 
         [Serializable]
         public class TileData
@@ -72,6 +69,13 @@ namespace Match3.Core
                 type != TileType.None &&
                 spriteRef != null &&
                 spriteRef.RuntimeKeyIsValid();
+        }
+
+        [Serializable]
+        public class SoundData
+        {
+            public SoundType type;
+            public AudioClip sound;
         }
 
 #if UNITY_EDITOR
@@ -97,9 +101,12 @@ namespace Match3.Core
             // Ensure positive values
             MaxGridInitAttempts = Mathf.Max(1, MaxGridInitAttempts);
             PointsPerTile = Mathf.Max(1, PointsPerTile);
-            
+
             // Validate tile data
             ValidateTileData();
+
+            // Validate sounds data
+            ValidateSoundsData();
         }
 
         private void ValidateTileData()
@@ -129,6 +136,16 @@ namespace Match3.Core
 
                 if (data.spriteRef == null || !data.spriteRef.RuntimeKeyIsValid())
                     Debug.LogWarning($"[GameConfig] TileType {data.type} has no valid sprite reference");
+            }
+        }
+
+        private void ValidateSoundsData()
+        {
+            var seenTypes = new HashSet<SoundType>();
+            foreach (var data in SoundsData)
+            {
+                if (!seenTypes.Add(data.type))
+                    Debug.LogWarning($"[GameConfig] Duplicate SoundType found: {data.type}");
             }
         }
 #endif

@@ -14,7 +14,6 @@ namespace Match3.UI
         [SerializeField] private MenuGameOver menuGameOver;
         [SerializeField] private GameObject grid;
 
-        [Inject] private readonly ScoreController scoreController;
         [Inject] private readonly GameController gameController;
 
         private void Start()
@@ -33,8 +32,6 @@ namespace Match3.UI
             grid.SetActive(true);
             menuGame.gameObject.SetActive(true);
             menuGameOver.gameObject.SetActive(false);
-
-            scoreController.ResetScore();
         }
 
         public void ShowGameOverMenu()

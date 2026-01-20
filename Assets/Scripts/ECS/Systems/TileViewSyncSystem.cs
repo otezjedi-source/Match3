@@ -68,7 +68,7 @@ namespace Match3.ECS.Systems
             }
 
             if (playSound && refs?.SoundController != null)
-                refs.SoundController.PlayDrop();
+                refs.SoundController.Play(SoundType.Drop);
         }
 
         private readonly void CompleteDropAnims(ref SystemState state)

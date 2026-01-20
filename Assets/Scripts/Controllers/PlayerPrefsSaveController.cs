@@ -14,7 +14,6 @@ namespace Match3.Save
 
         public async UniTask<SaveData> LoadAsync()
         {
-            // Yield to prevent blocking on main thread
             await UniTask.Yield();
 
             if (PlayerPrefs.HasKey(SAVE_KEY))

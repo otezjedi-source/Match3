@@ -1,5 +1,6 @@
 using Cysharp.Threading.Tasks;
 using Match3.Controllers;
+using Match3.ECS.Components;
 using TMPro;
 using UniRx;
 using Unity.Entities;
@@ -52,19 +53,19 @@ namespace Match3.UI
 
         private void OnBtnStartClicked()
         {
-            soundController.PlayBtnClick();
+            soundController.Play(SoundType.BtnClick);
             sceneLoader.LoadGameSceneAsync().Forget();
         }
 
         private void OnBtnResetHighScoreClick()
         {
-            soundController.PlayBtnClick();
+            soundController.Play(SoundType.BtnClick);
             scoreController.ResetHighScore();
         }
 
         private void OnBtnQuitClick()
         {
-            soundController.PlayBtnClick();
+            soundController.Play(SoundType.BtnClick);
 
             // Cleanup ECS world
             if (World.DefaultGameObjectInjectionWorld?.IsCreated == true)

@@ -21,6 +21,7 @@ namespace Match3.Controllers
         public readonly ReactiveProperty<bool> IsReady = new(false);
 
         private readonly CompositeDisposable disposables = new();
+        private readonly CancellationTokenSource cts = new();
         private CancellationTokenSource saveCts;
         private SaveData saveData;
         private bool isDisposed;
@@ -30,6 +31,7 @@ namespace Match3.Controllers
         /// </summary>
         public bool IsNewHighScore { get; private set; } = false;
 
+        #region Init/dispose
         public ScoreController()
         {
             // Auto-update high score when current score exceeds it
@@ -51,17 +53,46 @@ namespace Match3.Controllers
             try
             {
                 saveData = await saveController.LoadAsync();
-                HighScore.Value = saveData.HighScore;
-                IsReady.Value = true;
             }
             catch (Exception ex)
             {
                 Debug.LogError($"[ScoreController] Failed to load save data: {ex.Message}");
                 saveData = new();
-                IsReady.Value = true;
             }
+
+            HighScore.Value = saveData.HighScore;
+            IsReady.Value = true;
         }
 
+        public void Dispose()
+        {
+            if (isDisposed)
+                return;
+
+            isDisposed = true;
+
+            cts.Cancel();
+            saveCts?.Cancel();
+            saveCts?.Dispose();
+            saveCts = null;
+            cts.Dispose();
+
+            // Final attempt to save on dispose
+            if (saveData != null)
+            {
+                saveData.HighScore = HighScore.Value;
+                saveController.SaveAsync(saveData).Forget();
+            }
+
+            disposables?.Dispose();
+            Score?.Dispose();
+            HighScore?.Dispose();
+            IsReady?.Dispose();
+            
+        }
+        #endregion
+
+        #region Score
         /// <summary>
         /// Add points to current score. Called by ScoreSyncSystem.
         /// </summary>
@@ -70,13 +101,10 @@ namespace Match3.Controllers
             if (isDisposed)
                 return;
 
-            if (points < 0)
-            {
+            if (points > 0)
+                Score.Value += points;
+            else
                 Debug.LogWarning($"[ScoreController] Attempted to add {points} points");
-                return;
-            }
-
-            Score.Value += points;
         }
 
         /// <summary>
@@ -90,29 +118,17 @@ namespace Match3.Controllers
             Score.Value = 0;
             IsNewHighScore = false;
         }
+        #endregion
 
+        #region High score
         private void SetHighScore(int newHighScore)
         {
             if (isDisposed)
                 return;
 
             HighScore.Value = newHighScore;
-
-            if (saveData != null)
-            {
-                saveData.HighScore = newHighScore;
-                IsNewHighScore = true;
-
-                // Debounced save: cancel pending save and start new one
-                CancelPendingSave();
-                saveCts = new();
-
-                SaveAsync(saveCts.Token).Forget(ex =>
-                {
-                    if (ex is not OperationCanceledException)
-                        Debug.LogError($"[ScoreController] Failed to save when setting high score: {ex.Message}");
-                });
-            }
+            IsNewHighScore = true;
+            ScheduleSave();
         }
 
         /// <summary>
@@ -123,10 +139,21 @@ namespace Match3.Controllers
             if (isDisposed)
                 return;
 
-            SetHighScore(0);
+            HighScore.Value = 0;
             IsNewHighScore = false;
+            ScheduleSave();
         }
+        #endregion
 
+        #region Save
+        private void ScheduleSave()
+        {
+            saveCts?.Cancel();
+            saveCts?.Dispose();
+            saveCts = CancellationTokenSource.CreateLinkedTokenSource(cts.Token);
+            SaveAsync(saveCts.Token).Forget();
+        }
+        
         private async UniTask SaveAsync(CancellationToken ct)
         {
             if (isDisposed || saveData == null)
@@ -136,53 +163,18 @@ namespace Match3.Controllers
             {
                 // Small delay to batch rapid score changes
                 await UniTask.Delay(100, cancellationToken: ct);
-                if (isDisposed || ct.IsCancellationRequested)
+                if (isDisposed)
                     return;
 
+                saveData.HighScore = HighScore.Value;
                 await saveController.SaveAsync(saveData);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
             {
-                Debug.LogError($"Failed to save: {ex.Message}");
+                Debug.LogError($"[ScoreController] Failed to save: {ex.Message}");
             }
         }
-
-        private void CancelPendingSave()
-        {
-            if (saveCts == null)
-                return;
-
-            try
-            {
-                if (!saveCts.IsCancellationRequested)
-                    saveCts.Cancel();
-                saveCts.Dispose();
-            }
-            catch (OperationCanceledException) { }
-            finally
-            {
-                saveCts = null;
-            }
-        }
-
-        public void Dispose()
-        {
-            if (isDisposed)
-                return;
-
-            isDisposed = true;
-
-            CancelPendingSave();
-
-            // Final save on dispose if we have unsaved high score
-            if (saveData != null && IsNewHighScore)
-                saveController.SaveAsync(saveData).Forget(ex => Debug.LogError($"[ScoreController] Failed to save on dispose: {ex}"));
-
-            disposables?.Dispose();
-            Score?.Dispose();
-            HighScore?.Dispose();
-            IsReady?.Dispose();
-        }
+        #endregion
     }
 }

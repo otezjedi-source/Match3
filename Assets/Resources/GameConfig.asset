@@ -87,6 +87,15 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
+  SoundsData:
+  - type: 1
+    sound: {fileID: 8300000, guid: f55a1b4e6760e44588a3f152b2c0f8e4, type: 3}
+  - type: 2
+    sound: {fileID: 8300000, guid: a3a1d34b9e8d64934b3e3482764df88c, type: 3}
+  - type: 3
+    sound: {fileID: 8300000, guid: bdd24d2ea45fc449bb520ebe9947d335, type: 3}
+  - type: 4
+    sound: {fileID: 8300000, guid: 0f3752d3b66e844a58597be42fed46bd, type: 3}
   ButtonClickSound: {fileID: 8300000, guid: 0f3752d3b66e844a58597be42fed46bd, type: 3}
   SwapSound: {fileID: 8300000, guid: f55a1b4e6760e44588a3f152b2c0f8e4, type: 3}
   MatchSound: {fileID: 8300000, guid: a3a1d34b9e8d64934b3e3482764df88c, type: 3}

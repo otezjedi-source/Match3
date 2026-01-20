@@ -1,4 +1,6 @@
+using System.Collections.Generic;
 using Match3.Core;
+using Match3.ECS.Components;
 using UnityEngine;
 using VContainer;
 
@@ -10,27 +12,23 @@ namespace Match3.Controllers
     /// </summary>
     public class SoundController
     {
-        [Inject] private readonly GameConfig gameConfig;
-        [Inject] private readonly AudioSource audioSource;
+        private AudioSource audioSource;
 
-        public void PlayBtnClick()
+        private readonly Dictionary<SoundType, AudioClip> sounds = new();
+
+        [Inject]
+        public SoundController(GameConfig gameConfig, AudioSource audioSource)
         {
-            audioSource.PlayOneShot(gameConfig.ButtonClickSound);
+            this.audioSource = audioSource;
+
+            foreach (var sound in gameConfig.SoundsData)
+                sounds.Add(sound.type, sound.sound);
         }
 
-        public void PlaySwap()
+        public void Play(SoundType type)
         {
-            audioSource.PlayOneShot(gameConfig.SwapSound);
-        }
-
-        public void PlayMatch()
-        {
-            audioSource.PlayOneShot(gameConfig.MatchSound);
-        }
-
-        public void PlayDrop()
-        {
-            audioSource.PlayOneShot(gameConfig.DropSound);
+            if (sounds.TryGetValue(type, out var sound))
+                audioSource.PlayOneShot(sound);
         }
     }
 }

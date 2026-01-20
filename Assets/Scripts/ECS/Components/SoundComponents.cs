@@ -7,7 +7,6 @@ namespace Match3.ECS.Components
     /// </summary>
     public enum SoundType : byte
     {
-        None = 0,
         Swap = 1,
         Match = 2,
         Drop = 3,
