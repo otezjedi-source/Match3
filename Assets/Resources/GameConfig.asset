@@ -91,7 +91,7 @@ MonoBehaviour:
   - type: 1
     matchCount: 4
     spriteRef:
-      m_AssetGUID: 
+      m_AssetGUID: cdb1f0a5537aa4158bd2b98b72a1715a
       m_SubObjectName: 
       m_SubObjectType: 
       m_SubObjectGUID: 
@@ -100,7 +100,7 @@ MonoBehaviour:
   - type: 2
     matchCount: 4
     spriteRef:
-      m_AssetGUID: 
+      m_AssetGUID: cdb1f0a5537aa4158bd2b98b72a1715a
       m_SubObjectName: 
       m_SubObjectType: 
       m_SubObjectGUID: 
@@ -109,7 +109,7 @@ MonoBehaviour:
   - type: 3
     matchCount: 5
     spriteRef:
-      m_AssetGUID: 
+      m_AssetGUID: c2aa6bc8173c6489382bc1477f884724
       m_SubObjectName: 
       m_SubObjectType: 
       m_SubObjectGUID: 
