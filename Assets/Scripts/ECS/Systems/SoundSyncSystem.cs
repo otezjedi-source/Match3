@@ -30,6 +30,12 @@ namespace Match3.ECS.Systems
                 refs.SoundController.Play(request.ValueRO.Type);
                 ecb.DestroyEntity(entity);
             }
+
+            foreach (var (request, entity) in SystemAPI.Query<RefRO<PlayBonusSoundRequest>>().WithEntityAccess())
+            {
+                refs.SoundController.PlayBonus(request.ValueRO.Type);
+                ecb.DestroyEntity(entity);
+            }
         }
     }
 }

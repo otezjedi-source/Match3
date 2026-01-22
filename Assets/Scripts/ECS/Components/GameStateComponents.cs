@@ -51,6 +51,7 @@ namespace Match3.ECS.Components
         public int2 PosA;           // Original position of TileA
         public int2 PosB;           // Original position of TileB
         public bool IsReverting;    // True if no match found, swapping back
+        public bool IsHorizontal;   // True if swap is horizontal. Used for line bonus direction.
     }
 
     /// <summary>

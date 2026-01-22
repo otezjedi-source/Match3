@@ -12,9 +12,10 @@ namespace Match3.Controllers
     /// </summary>
     public class SoundController
     {
-        private AudioSource audioSource;
+        private readonly AudioSource audioSource;
 
         private readonly Dictionary<SoundType, AudioClip> sounds = new();
+        private readonly Dictionary<BonusType, AudioClip> bonusSounds = new();
 
         [Inject]
         public SoundController(GameConfig gameConfig, AudioSource audioSource)
@@ -23,11 +24,28 @@ namespace Match3.Controllers
 
             foreach (var sound in gameConfig.SoundsData)
                 sounds.Add(sound.type, sound.sound);
+
+            foreach (var bonus in gameConfig.BonusesData)
+                bonusSounds.Add(bonus.type, bonus.sound);
         }
 
+        /// <summary>
+        /// Plays specific ingame sound.
+        /// </summary>
+        /// <param name="type">SoundType to play</param>
         public void Play(SoundType type)
         {
             if (sounds.TryGetValue(type, out var sound))
+                audioSource.PlayOneShot(sound);
+        }
+
+        /// <summary>
+        /// Plays specific bonus sound.
+        /// </summary>
+        /// <param name="type">BonusType to play</param>
+        public void PlayBonus(BonusType type)
+        {
+            if (bonusSounds.TryGetValue(type, out var sound))
                 audioSource.PlayOneShot(sound);
         }
     }

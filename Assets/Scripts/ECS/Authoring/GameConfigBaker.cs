@@ -36,6 +36,18 @@ namespace Match3.ECS.Authoring
                 PointsPerTile = authoring.gameConfig.PointsPerTile,
             });
 
+            // Bonuses creation rules
+            var buffer = AddBuffer<BonusConfigElement>(entity);
+            buffer.EnsureCapacity(authoring.gameConfig.BonusesData.Count);
+            foreach (var bonus in authoring.gameConfig.BonusesData)
+            {
+                buffer.Add(new()
+                {
+                    Type = bonus.type,
+                    MatchCount = bonus.matchCount
+                });
+            }
+
             // Animation durations
             AddComponent<TimingConfig>(entity, new()
             {

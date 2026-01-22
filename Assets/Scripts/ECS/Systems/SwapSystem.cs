@@ -93,6 +93,7 @@ namespace Match3.ECS.Systems
                     PosA = posA,
                     PosB = posB,
                     IsReverting = false,
+                    IsHorizontal = posA.y == posB.y,
                 });
 
                 gameState.ValueRW.Phase = GamePhase.Swap;

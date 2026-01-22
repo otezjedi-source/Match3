@@ -1,0 +1,33 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: bbb281ee3bf0b054c82ac2347e9e782c, type: 3}
+  m_Name: bonuses
+  m_EditorClassIdentifier: Unity.Addressables.Editor::UnityEditor.AddressableAssets.Settings.AddressableAssetGroup
+  m_GroupName: bonuses
+  m_GUID: 4ab280e44b00441a2807f88c47c262d2
+  m_SerializeEntries:
+  - m_GUID: c2aa6bc8173c6489382bc1477f884724
+    m_Address: Assets/Sprites/Bonus_Bomb.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cdb1f0a5537aa4158bd2b98b72a1715a
+    m_Address: Assets/Sprites/Bonus_Line.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
+  m_ReadOnly: 0
+  m_Settings: {fileID: 11400000, guid: f11449dbd8b37497e986179f190e5b21, type: 2}
+  m_SchemaSet:
+    m_Schemas:
+    - {fileID: 11400000, guid: 1a43047412bd54767855c746a5d953dc, type: 2}
+    - {fileID: 11400000, guid: 3124e1e7a25024b6da213033a4cb6f66, type: 2}

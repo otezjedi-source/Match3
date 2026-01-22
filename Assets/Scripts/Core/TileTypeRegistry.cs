@@ -1,10 +1,9 @@
 using System;
-using Match3.Core;
 using Match3.ECS.Components;
 using VContainer;
 using Random = UnityEngine.Random;
 
-namespace Match3.Controllers
+namespace Match3.Core
 {
     /// <summary>
     /// Registry of available tile types. Used by FillSystem to spawn random tiles.

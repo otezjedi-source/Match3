@@ -21,4 +21,12 @@ namespace Match3.ECS.Components
     {
         public SoundType Type;
     }
+
+    /// <summary>
+    /// Request to play a bonus sound.
+    /// </summary>
+    public struct PlayBonusSoundRequest : IComponentData
+    {
+        public BonusType Type;
+    }
 }

@@ -52,8 +52,11 @@ namespace Match3.Core
         [Tooltip("Delay before clearing matched tiles.")]
         public float MatchDelay = 0.2f;
 
-        [Header("Tiles Data")]
+        [Header("Tiles data")]
         public List<TileData> TilesData;
+
+        [Header("Bonuses data")]
+        public List<BonusData> BonusesData;
 
         [Header("Sounds data")]
         public List<SoundData> SoundsData;
@@ -69,6 +72,15 @@ namespace Match3.Core
                 type != TileType.None &&
                 spriteRef != null &&
                 spriteRef.RuntimeKeyIsValid();
+        }
+
+        [Serializable]
+        public class BonusData
+        {
+            public BonusType type;
+            public int matchCount;
+            public AssetReference spriteRef;
+            public AudioClip sound;
         }
 
         [Serializable]
@@ -102,14 +114,12 @@ namespace Match3.Core
             MaxGridInitAttempts = Mathf.Max(1, MaxGridInitAttempts);
             PointsPerTile = Mathf.Max(1, PointsPerTile);
 
-            // Validate tile data
-            ValidateTileData();
-
-            // Validate sounds data
+            ValidateTilesData();
+            ValidateBonusesData();
             ValidateSoundsData();
         }
 
-        private void ValidateTileData()
+        private void ValidateTilesData()
         {
             if (TilesData == null || TilesData.Count == 0)
             {
@@ -136,6 +146,24 @@ namespace Match3.Core
 
                 if (data.spriteRef == null || !data.spriteRef.RuntimeKeyIsValid())
                     Debug.LogWarning($"[GameConfig] TileType {data.type} has no valid sprite reference");
+            }
+        }
+
+        private void ValidateBonusesData()
+        {
+            var seenTypes = new HashSet<BonusType>();
+            foreach (var data in BonusesData)
+            {
+                if (!seenTypes.Add(data.type))
+                    Debug.LogWarning($"[GameConfig] Duplicate BonusType found: {data.type}");
+
+                if (data.matchCount <= MatchCount)
+                    Debug.LogWarning($"[GameConfig] BonusType {data.type} must be more than {MatchCount}");
+
+                if (data.spriteRef == null || !data.spriteRef.RuntimeKeyIsValid())
+                    Debug.LogWarning($"[GameConfig] BonusType {data.type} has no valid sprite reference");
+
+                data.matchCount = Mathf.Max(data.matchCount, MatchCount + 1);
             }
         }
 
