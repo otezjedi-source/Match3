@@ -12,16 +12,16 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: fdf578708dc6047309fa2fd95e41fdcc, type: 3}
   m_Name: GameConfig
   m_EditorClassIdentifier: 
-  GridWidth: 5
-  GridHeight: 9
-  MaxGridInitAttempts: 100
-  MatchCount: 3
-  PointsPerTile: 10
-  SwapDuration: 0.1
-  FallDuration: 0.2
-  MinDragDistance: 0.5
-  MatchDelay: 0.1
-  TilesData:
+  gridWidth: 5
+  gridHeight: 9
+  maxGridInitAttempts: 100
+  matchCount: 3
+  pointsPerTile: 10
+  swapDuration: 0.1
+  fallDuration: 0.2
+  minDragDistance: 0.5
+  matchDelay: 0.1
+  tilesData:
   - type: 1
     spriteRef:
       m_AssetGUID: baaebb62bb3b54ccba3dd035c87e3945
@@ -87,7 +87,7 @@ MonoBehaviour:
       m_SubObjectType: 
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
-  BonusesData:
+  bonusesData:
   - type: 1
     matchCount: 4
     spriteRef:
@@ -115,7 +115,7 @@ MonoBehaviour:
       m_SubObjectGUID: 
       m_EditorAssetChanged: 0
     sound: {fileID: 8300000, guid: bc398df3a433b47709c6b92541e8ab6b, type: 3}
-  SoundsData:
+  soundsData:
   - type: 1
     sound: {fileID: 8300000, guid: f55a1b4e6760e44588a3f152b2c0f8e4, type: 3}
   - type: 2

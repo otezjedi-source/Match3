@@ -15,8 +15,8 @@ namespace Match3.ECS.Components
     [InternalBufferCapacity(64)]
     public struct GridCell : IBufferElementData
     {
-        public Entity Tile;
-        public readonly bool IsEmpty => Tile == Entity.Null;
+        public Entity tile;
+        public readonly bool IsEmpty => tile == Entity.Null;
     }
 
     /// <summary>
@@ -26,7 +26,7 @@ namespace Match3.ECS.Components
     [InternalBufferCapacity(64)]
     public struct GridTileTypeCache : IBufferElementData
     {
-        public TileType Type;
+        public TileType type;
     }
 
     /// <summary>
@@ -35,7 +35,7 @@ namespace Match3.ECS.Components
     [InternalBufferCapacity(32)]
     public struct MatchResult : IBufferElementData
     {
-        public int2 Pos;
+        public int2 pos;
     }
 
     /// <summary>
@@ -44,7 +44,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct GridDirtyFlag : IComponentData
     {
-        public bool IsDirty;
+        public bool isDirty;
     }
 
     /// <summary>
@@ -53,8 +53,8 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct PossibleMovesCache : IComponentData
     {
-        public bool IsValid;    // True if HasMoves is current
-        public bool HasMoves;   // True if at least one valid move exists
+        public bool isValid;    // True if HasMoves is current
+        public bool hasMoves;   // True if at least one valid move exists
     }
 
     // Request singletons - created to trigger systems, destroyed when processed

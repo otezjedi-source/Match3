@@ -106,10 +106,10 @@ namespace Match3.Core
             {
                 var entity = query.GetSingletonEntity();
                 var refs = entityManager.GetComponentObject<ManagedReferences>(entity);
-                refs.ScoreController = scoreController;
-                refs.SoundController = soundController;
-                refs.TileTypeRegistry = tileTypeRegistry;
-                refs.TileFactory = tileFactory;
+                refs.scoreController = scoreController;
+                refs.soundController = soundController;
+                refs.tileTypeRegistry = tileTypeRegistry;
+                refs.tileFactory = tileFactory;
                 query.Dispose();
                 return;
             }
@@ -118,10 +118,10 @@ namespace Match3.Core
             var newEntity = entityManager.CreateEntity();
             entityManager.AddComponentObject(newEntity, new ManagedReferences
             {
-                ScoreController = scoreController,
-                SoundController = soundController,
-                TileTypeRegistry = tileTypeRegistry,
-                TileFactory = tileFactory,
+                scoreController = scoreController,
+                soundController = soundController,
+                tileTypeRegistry = tileTypeRegistry,
+                tileFactory = tileFactory,
             });
             query.Dispose();
         }

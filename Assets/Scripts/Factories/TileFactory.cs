@@ -39,8 +39,8 @@ namespace Match3.Factories
 
             cts = new();
 
-            tileDataCache = new(gameConfig.TilesData.Count);
-            foreach (var tileData in gameConfig.TilesData)
+            tileDataCache = new(gameConfig.tilesData.Count);
+            foreach (var tileData in gameConfig.tilesData)
             {
                 if (!tileDataCache.ContainsKey(tileData.type))
                     tileDataCache[tileData.type] = tileData;
@@ -76,9 +76,9 @@ namespace Match3.Factories
                 }
 
                 // Reset entity components to new state
-                entityManager.SetComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
-                entityManager.SetComponentData<TileStateData>(entity, new() { State = TileState.Idle });
-                entityManager.SetComponentData<TileWorldPos>(entity, new() { Pos = new(x, y, 0) });
+                entityManager.SetComponentData<TileData>(entity, new() { type = type, gridPos = new(x, y) });
+                entityManager.SetComponentData<TileStateData>(entity, new() { state = TileState.Idle });
+                entityManager.SetComponentData<TileWorldPos>(entity, new() { pos = new(x, y, 0) });
                 entityManager.SetComponentEnabled<TileMove>(entity, false);
 
                 view = GetView(entity);
@@ -106,11 +106,11 @@ namespace Match3.Factories
             var view = Object.Instantiate(tilePrefab, new(x, y), Quaternion.identity, parent);
 
             // Add all required components
-            entityManager.AddComponentData<TileData>(entity, new() { Type = type, GridPos = new(x, y) });
-            entityManager.AddComponentData<TileStateData>(entity, new() { State = TileState.Idle });
-            entityManager.AddComponentData<TileWorldPos>(entity, new() { Pos = new(x, y, 0) });
+            entityManager.AddComponentData<TileData>(entity, new() { type = type, gridPos = new(x, y) });
+            entityManager.AddComponentData<TileStateData>(entity, new() { state = TileState.Idle });
+            entityManager.AddComponentData<TileWorldPos>(entity, new() { pos = new(x, y, 0) });
             entityManager.AddComponentData<TileMove>(entity, new());
-            entityManager.AddComponentObject(entity, new TileViewData { View = view });
+            entityManager.AddComponentObject(entity, new TileViewData { view = view });
             entityManager.SetComponentEnabled<TileMove>(entity, false);
 
             var task = InitViewAsync(view, type, entity);
@@ -195,7 +195,7 @@ namespace Match3.Factories
         {
             if (!entityManager.Exists(entity) || !entityManager.HasComponent<TileViewData>(entity))
                 return null;
-            return entityManager.GetComponentObject<TileViewData>(entity)?.View;
+            return entityManager.GetComponentObject<TileViewData>(entity)?.view;
         }
 
         public void Dispose()

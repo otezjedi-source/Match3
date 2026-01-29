@@ -15,7 +15,7 @@ namespace Match3.ECS.Systems
     {
         public readonly void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<GameConfigTag>();
+            state.RequireForUpdate<ConfigTag>();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -32,10 +32,10 @@ namespace Match3.ECS.Systems
                 return;
 
             var entity = state.EntityManager.CreateSingleton<GameStateTag>();
-            state.EntityManager.AddComponentData(entity, new GameState
+            state.EntityManager.AddComponentData<GameState>(entity, new()
             {
-                Phase = GamePhase.Idle,
-                PhaseTimer = 0,
+                phase = GamePhase.Idle,
+                phaseTimer = 0,
             });
         }
 
@@ -48,8 +48,8 @@ namespace Match3.ECS.Systems
             state.EntityManager.AddBuffer<GridCell>(entity);
             state.EntityManager.AddBuffer<GridTileTypeCache>(entity);
             state.EntityManager.AddBuffer<MatchResult>(entity);
-            state.EntityManager.AddComponentData(entity, new GridDirtyFlag { IsDirty = true });
-            state.EntityManager.AddComponentData(entity, new PossibleMovesCache { IsValid = false, HasMoves = true });
+            state.EntityManager.AddComponentData<GridDirtyFlag>(entity, new() { isDirty = true });
+            state.EntityManager.AddComponentData<PossibleMovesCache>(entity, new() { isValid = false, hasMoves = true });
         }
     }
 
@@ -71,17 +71,16 @@ namespace Match3.ECS.Systems
             state.Enabled = false;
 
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
 
-            var cells = state.EntityManager.GetBuffer<GridCell>(gridEntity);
+            var cells = SystemAPI.GetSingletonBuffer<GridCell>();
             cells.Length = gridConfig.CellCount;
             for (int i = 0; i < cells.Length; i++)
-                cells[i] = new() { Tile = Entity.Null };
+                cells[i] = new() { tile = Entity.Null };
 
-            var typeCache = state.EntityManager.GetBuffer<GridTileTypeCache>(gridEntity);
+            var typeCache = SystemAPI.GetSingletonBuffer<GridTileTypeCache>();
             typeCache.Length = gridConfig.CellCount;
             for (int i = 0; i < typeCache.Length; i++)
-                typeCache[i] = new() { Type = TileType.None };
+                typeCache[i] = new() { type = TileType.None };
         }
     }
 
@@ -96,8 +95,8 @@ namespace Match3.ECS.Systems
         private NativeList<TileType> allowedTypes;
         private NativeList<Entity> gridTilesCache;
         private NativeList<TileType> gridTypesCache;
-        private Random random;
         private EntityQuery requestQuery;
+        private Random random;
 
         public void OnCreate(ref SystemState state)
         {
@@ -111,9 +110,8 @@ namespace Match3.ECS.Systems
             allowedTypes = new(8, Allocator.Persistent);
             gridTilesCache = new(64, Allocator.Persistent);
             gridTypesCache = new(64, Allocator.Persistent);
-
-            random = new((uint)Environment.TickCount);
             requestQuery = SystemAPI.QueryBuilder().WithAll<GridStartRequest>().Build();
+            random = new((uint)Environment.TickCount);
         }
 
         public void OnDestroy(ref SystemState state)
@@ -129,53 +127,49 @@ namespace Match3.ECS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            if (refs?.TileFactory == null || refs?.TileTypeRegistry == null)
+            if (refs.tileFactory == null || refs.tileTypeRegistry == null)
                 return;
 
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-            var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
+            var typeCache = SystemAPI.GetSingletonBuffer<GridTileTypeCache>();
 
             // Generate types, retry if no valid moves exist
-            GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig, matchConfig);
+            GenerateTypes(typeCache, refs.tileTypeRegistry.All, gridConfig, matchConfig);
             
             int attempts = 0;
-            while (attempts < gridConfig.MaxInitAttempts)
+            while (attempts < gridConfig.maxInitAttempts)
             {
                 if (PossibleMovesChecker.CheckMoves(ref gridTypesCache, ref gridConfig, ref matchConfig))
                     break;
 
-                GenerateTypes(typeCache, refs.TileTypeRegistry.All, gridConfig, matchConfig);
+                GenerateTypes(typeCache, refs.tileTypeRegistry.All, gridConfig, matchConfig);
                 ++attempts;
             }
 
             // Create actual tile entities from the generated types
             gridTilesCache.Clear();
-            for (int y = 0; y < gridConfig.Height; y++)
+            for (int y = 0; y < gridConfig.height; y++)
             {
-                for (int x = 0; x < gridConfig.Width; x++)
+                for (int x = 0; x < gridConfig.width; x++)
                 {
                     int idx = gridConfig.GetIndex(x, y);
-                    var tile = refs.TileFactory.Create(x, y, gridTypesCache[idx]);
+                    var tile = refs.tileFactory.Create(x, y, gridTypesCache[idx]);
                     gridTilesCache.Add(tile);
                 }
             }
 
             // Store tile references in grid buffer
-            var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
             for (int i = 0; i < gridCells.Length; i++)
-                gridCells[i] = new() { Tile = gridTilesCache[i] };
+                gridCells[i] = new() { tile = gridTilesCache[i] };
 
-            var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
-            dirtyFlag.ValueRW.IsDirty = true;
-
-            var movesCache = SystemAPI.GetComponentRW<PossibleMovesCache>(gridEntity);
-            movesCache.ValueRW.IsValid = true;
+            SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
+            SystemAPI.GetSingletonRW<PossibleMovesCache>().ValueRW.isValid = true;
 
             var gameState = SystemAPI.GetSingletonRW<GameState>();
-            gameState.ValueRW.Phase = GamePhase.Idle;
-            gameState.ValueRW.PhaseTimer = 0;
+            gameState.ValueRW.phase = GamePhase.Idle;
+            gameState.ValueRW.phaseTimer = 0;
 
             state.EntityManager.DestroyEntity(requestQuery);
         }
@@ -189,9 +183,9 @@ namespace Match3.ECS.Systems
             ReadOnlySpan<TileType> types,
             GridConfig gridConfig, MatchConfig matchConfig)
         {
-            for (int y = 0; y < gridConfig.Height; y++)
+            for (int y = 0; y < gridConfig.height; y++)
             {
-                for (int x = 0; x < gridConfig.Width; x++)
+                for (int x = 0; x < gridConfig.width; x++)
                 {
                     allowedTypes.Clear();
 
@@ -206,30 +200,29 @@ namespace Match3.ECS.Systems
                     }
 
                     int idx = gridConfig.GetIndex(x, y);
-                    TileType type;
-                    if (allowedTypes.Length == 0)
-                        type = types[random.NextInt(types.Length)];
-                    else
-                        type = allowedTypes[random.NextInt(allowedTypes.Length)];
-                    typeCache[idx] = new() { Type = type };
+                    var type = allowedTypes.Length == 0 
+                        ? types[random.NextInt(types.Length)] 
+                        : allowedTypes[random.NextInt(allowedTypes.Length)];
+                    typeCache[idx] = new() { type = type };
                 }
             }
 
             // Copy to cache for move validation
             gridTypesCache.Clear();
             for (int i = 0; i < typeCache.Length; i++)
-                gridTypesCache.Add(typeCache[i].Type);
+                gridTypesCache.Add(typeCache[i].type);
+            return;
 
             bool CanMatch(int x, int y, TileType type, int dx, int dy)
             {
-                for (int i = 1; i < matchConfig.MatchCount; i++)
+                for (int i = 1; i < matchConfig.matchCount; i++)
                 {
                     int nx = x + dx * i;
                     int ny = y + dy * i;
                     if (!gridConfig.IsValidPos(nx, ny))
                         return false;
 
-                    var prevType = typeCache[gridConfig.GetIndex(nx, ny)].Type;
+                    var prevType = typeCache[gridConfig.GetIndex(nx, ny)].type;
                     if (prevType != type)
                         return false;
                 }

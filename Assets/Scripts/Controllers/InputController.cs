@@ -108,7 +108,7 @@ namespace Match3.Controllers
                 return false;
 
             var gameState = gameStateQuery.GetSingleton<GameState>();
-            return gameState.Phase == GamePhase.Idle;
+            return gameState.phase == GamePhase.Idle;
         }
 
         private void OnClick(InputAction.CallbackContext ctx)
@@ -154,7 +154,7 @@ namespace Match3.Controllers
             float3 currentWorldPos = mainCamera.ScreenToWorldPoint(screenPos);
             float dragDistance = math.distance(dragStartWorldPosition, currentWorldPos);
 
-            if (dragDistance >= gameConfig.MinDragDistance)
+            if (dragDistance >= gameConfig.minDragDistance)
             {
                 var dragDirection = math.normalize(currentWorldPos - dragStartWorldPosition);
                 var targetPos = GetTargetFromDirection(dragDirection);
@@ -162,7 +162,7 @@ namespace Match3.Controllers
                 {
                     // Create swap request entity for ECS to process
                     var request = entityManager.CreateEntity();
-                    entityManager.AddComponentData<PlayerSwapRequest>(request, new() { PosA = dragStartPos, PosB = targetPos });
+                    entityManager.AddComponentData<PlayerSwapRequest>(request, new() { posA = dragStartPos, posB = targetPos });
                     isDragging = false;
                 }
             }
@@ -190,6 +190,6 @@ namespace Match3.Controllers
         }
 
         private int2 WorldToGridPos(float3 worldPos) => new((int)math.round(worldPos.x), (int)math.round(worldPos.y));
-        private bool IsValidPos(int x, int y) => x >= 0 && x < gameConfig.GridWidth && y >= 0 && y < gameConfig.GridHeight;
+        private bool IsValidPos(int x, int y) => x >= 0 && x < gameConfig.gridWidth && y >= 0 && y < gameConfig.gridHeight;
     }
 }

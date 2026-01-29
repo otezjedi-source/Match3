@@ -20,7 +20,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct Bonus : IComponentData, IEnableableComponent
     {
-        public BonusType Type;
+        public BonusType type;
     }
 
     /// <summary>
@@ -29,7 +29,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct CreateBonusRequest : IComponentData
     {
-        public int2 Pos;
-        public BonusType Type;
+        public int2 pos;
+        public BonusType type;
     }
 }

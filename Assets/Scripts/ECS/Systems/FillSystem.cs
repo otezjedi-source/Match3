@@ -1,6 +1,7 @@
 using Match3.ECS.Components;
 using Unity.Collections;
 using Unity.Entities;
+using Unity.Mathematics;
 
 namespace Match3.ECS.Systems
 {
@@ -12,12 +13,25 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(FallSystem))]
     public partial struct FillSystem : ISystem
     {
+        private struct EmptyCell
+        {
+            public int2 pos;
+            public int spawnY;
+        }
+
+        private struct NewTile
+        {
+            public int idx;
+            public Entity tile;
+        }
+        
         // Cached lists to avoid per-frame allocations
-        private NativeList<(int x, int y, int spawnY)> emptyCells;
-        private NativeList<(int idx, Entity tile)> newTiles;
+        private NativeList<EmptyCell> emptyCells;
+        private NativeList<NewTile> newTiles;
 
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<TimingConfig>();
@@ -38,40 +52,43 @@ namespace Match3.ECS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var gameState = SystemAPI.GetSingleton<GameState>();
-            if (gameState.Phase != GamePhase.Fill)
+            if (gameState.phase != GamePhase.Fill)
                 return;
             
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            if (refs?.TileFactory == null || refs?.TileTypeRegistry == null)
+            if (refs.tileFactory == null || refs.tileTypeRegistry == null)
                 return;
 
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var timingConfig = SystemAPI.GetSingleton<TimingConfig>();
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-            var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
 
             // Find all empty cells, column by column
             // Track spawn Y position so tiles stack correctly above the grid
             emptyCells.Clear();
-            for (int x = 0; x < gridConfig.Width; x++)
+            for (int x = 0; x < gridConfig.width; x++)
             {
                 int count = 0;
-                for (int y = 0; y < gridConfig.Height; y++)
+                for (int y = 0; y < gridConfig.height; y++)
                 {
                     int idx = gridConfig.GetIndex(x, y);
-                    if (gridCells[idx].IsEmpty)
+                    if (!gridCells[idx].IsEmpty)
+                        continue;
+                    
+                    emptyCells.Add(new()
                     {
-                        // spawnY = grid height + offset for stacking
-                        emptyCells.Add((x, y, gridConfig.Height + count));
-                        ++count;
-                    }
+                        pos = new(x, y),
+                        spawnY = gridConfig.height + count
+                    });
+                        
+                    ++count;
                 }
             }
 
             if (emptyCells.Length == 0)
             {
                 // No empty cells, go back to Fall phase for final settling
-                SystemAPI.GetSingletonRW<GameState>().ValueRW.Phase = GamePhase.Fall;
+                SystemAPI.GetSingletonRW<GameState>().ValueRW.phase = GamePhase.Fall;
                 return;
             }
 
@@ -79,34 +96,36 @@ namespace Match3.ECS.Systems
             newTiles.Clear();
             for (int i = 0; i < emptyCells.Length; i++)
             {
-                var (x, y, spawnY) = emptyCells[i];
+                var cell = emptyCells[i];
 
-                var type = refs.TileTypeRegistry.GetRandomType();
-                var tile = refs.TileFactory.Create(x, spawnY, type);
+                var type = refs.tileTypeRegistry.GetRandomType();
+                var tile = refs.tileFactory.Create(cell.pos.x, cell.spawnY, type);
 
                 // Target position is the empty cell, tile will animate down
                 var tileData = state.EntityManager.GetComponentData<TileData>(tile);
-                tileData.GridPos = new(x, y);
+                tileData.gridPos = cell.pos;
                 state.EntityManager.SetComponentData(tile, tileData);
 
-                float distance = spawnY - y;
-                float duration = timingConfig.FallDuration * distance;
-                TileMoveHelper.Start(state.EntityManager, tile, new(x, y, 0), duration, TileState.Fall);
+                float distance = cell.spawnY - cell.pos.y;
+                float duration = timingConfig.fallDuration * distance;
+                TileMoveHelper.Start(state.EntityManager, tile, new(cell.pos.x, cell.pos.y, 0), duration, TileState.Fall);
 
-                newTiles.Add((gridConfig.GetIndex(x, y), tile));
+                newTiles.Add(new()
+                {
+                    idx = gridConfig.GetIndex(cell.pos),
+                    tile = tile
+                });
             }
 
             // Update grid buffer with new tiles
             // Re-fetch buffer in case it was reallocated
-            gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
-            foreach (var (idx, tile) in newTiles)
-                gridCells[idx] = new() { Tile = tile };
+            gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
+            foreach (var tile in newTiles)
+                gridCells[tile.idx] = new() { tile = tile.tile };
 
             // Mark grid as dirty to update type cache
-            var dirtyFlag = SystemAPI.GetSingletonRW<GridDirtyFlag>();
-            dirtyFlag.ValueRW.IsDirty = true;
-
-            SystemAPI.GetSingletonRW<GameState>().ValueRW.Phase = GamePhase.Fall;
+            SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
+            SystemAPI.GetSingletonRW<GameState>().ValueRW.phase = GamePhase.Fall;
         }
     }
 }

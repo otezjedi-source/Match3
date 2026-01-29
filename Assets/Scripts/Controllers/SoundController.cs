@@ -22,10 +22,10 @@ namespace Match3.Controllers
         {
             this.audioSource = audioSource;
 
-            foreach (var sound in gameConfig.SoundsData)
+            foreach (var sound in gameConfig.soundsData)
                 sounds.Add(sound.type, sound.sound);
 
-            foreach (var bonus in gameConfig.BonusesData)
+            foreach (var bonus in gameConfig.bonusesData)
                 bonusSounds.Add(bonus.type, bonus.sound);
         }
 

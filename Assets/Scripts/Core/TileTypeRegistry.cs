@@ -18,9 +18,9 @@ namespace Match3.Core
         [Inject]
         public TileTypeRegistry(GameConfig gameConfig)
         {
-            types = new TileType[gameConfig.TilesData.Count];
+            types = new TileType[gameConfig.tilesData.Count];
             for (int i = 0; i < types.Length; i++)
-                types[i] = gameConfig.TilesData[i].type;
+                types[i] = gameConfig.tilesData[i].type;
         }
 
         /// <summary>

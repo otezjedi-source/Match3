@@ -20,44 +20,44 @@ namespace Match3.ECS.Authoring
             }
 
             var entity = GetEntity(TransformUsageFlags.None);
+            
+            // Tag for querying config entity
+            AddComponent<ConfigTag>(entity);
 
             // Grid dimensions and generation settings
             AddComponent<GridConfig>(entity, new()
             {
-                Width = authoring.gameConfig.GridWidth,
-                Height = authoring.gameConfig.GridHeight,
-                MaxInitAttempts = authoring.gameConfig.MaxGridInitAttempts,
+                width = authoring.gameConfig.gridWidth,
+                height = authoring.gameConfig.gridHeight,
+                maxInitAttempts = authoring.gameConfig.maxGridInitAttempts,
             });
 
             // Matching rules and scoring
             AddComponent<MatchConfig>(entity, new()
             {
-                MatchCount = authoring.gameConfig.MatchCount,
-                PointsPerTile = authoring.gameConfig.PointsPerTile,
+                matchCount = authoring.gameConfig.matchCount,
+                pointsPerTile = authoring.gameConfig.pointsPerTile,
             });
 
             // Bonuses creation rules
             var buffer = AddBuffer<BonusConfigElement>(entity);
-            buffer.EnsureCapacity(authoring.gameConfig.BonusesData.Count);
-            foreach (var bonus in authoring.gameConfig.BonusesData)
+            buffer.EnsureCapacity(authoring.gameConfig.bonusesData.Count);
+            foreach (var bonus in authoring.gameConfig.bonusesData)
             {
                 buffer.Add(new()
                 {
-                    Type = bonus.type,
-                    MatchCount = bonus.matchCount
+                    type = bonus.type,
+                    matchCount = bonus.matchCount
                 });
             }
 
             // Animation durations
             AddComponent<TimingConfig>(entity, new()
             {
-                SwapDuration = authoring.gameConfig.SwapDuration,
-                FallDuration = authoring.gameConfig.FallDuration,
-                MatchDelay = authoring.gameConfig.MatchDelay,
+                swapDuration = authoring.gameConfig.swapDuration,
+                fallDuration = authoring.gameConfig.fallDuration,
+                matchDelay = authoring.gameConfig.matchDelay,
             });
-
-            // Tag for querying config entity
-            AddComponent<GameConfigTag>(entity);
         }
     }
 }

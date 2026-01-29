@@ -28,8 +28,8 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct GameState : IComponentData
     {
-        public GamePhase Phase;
-        public float PhaseTimer; // Used for delays (e.g., before clearing)
+        public GamePhase phase;
+        public float phaseTimer; // Used for delays (e.g., before clearing)
     }
 
     /// <summary>
@@ -37,8 +37,8 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct PlayerSwapRequest : IComponentData
     {
-        public int2 PosA;
-        public int2 PosB;
+        public int2 posA;
+        public int2 posB;
     }
 
     /// <summary>
@@ -46,12 +46,12 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct SwapRequest : IComponentData
     {
-        public Entity TileA;
-        public Entity TileB;
-        public int2 PosA;           // Original position of TileA
-        public int2 PosB;           // Original position of TileB
-        public bool IsReverting;    // True if no match found, swapping back
-        public bool IsHorizontal;   // True if swap is horizontal. Used for line bonus direction.
+        public Entity tileA;
+        public Entity tileB;
+        public int2 posA;           // Original position of TileA
+        public int2 posB;           // Original position of TileB
+        public bool isReverting;    // True if no match found, swapping back
+        public bool isHorizontal;   // True if swap is horizontal. Used for line bonus direction.
     }
 
     /// <summary>
@@ -59,7 +59,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct ScoreEvent : IComponentData
     {
-        public int Points;
+        public int points;
     }
 
     /// <summary>

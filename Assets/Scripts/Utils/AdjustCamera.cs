@@ -10,10 +10,10 @@ namespace Match3.Utils
     [RequireComponent(typeof(Camera))]
     public class AdjustCamera : MonoBehaviour
     {
-        [SerializeField] private float targetSize = 0;
-        [SerializeField] private CanvasScaler canvas = null;
+        [SerializeField] private float targetSize;
+        [SerializeField] private CanvasScaler canvas;
 
-        private Camera cam = null;
+        private Camera cam;
 
         private void Awake()
         {
@@ -34,10 +34,10 @@ namespace Match3.Utils
 
         private void AdjustCameraSize()
         {
-            if (cam.aspect == 0 || canvas == null || canvas.referenceResolution.y == 0)
+            if (cam.aspect == 0 || !canvas || canvas.referenceResolution.y == 0)
                 return;
 
-            float referenceAspect = canvas.referenceResolution.x / canvas.referenceResolution.y;
+            var referenceAspect = canvas.referenceResolution.x / canvas.referenceResolution.y;
             if (cam.aspect < referenceAspect)
                 // Screen is narrower than reference - expand vertical view
                 cam.orthographicSize = targetSize * referenceAspect / cam.aspect;
@@ -45,7 +45,7 @@ namespace Match3.Utils
                 cam.orthographicSize = targetSize;
 
             // Match width or height based on aspect ratio
-            canvas.matchWidthOrHeight = Camera.main.aspect < referenceAspect ? 0 : 1;
+            canvas.matchWidthOrHeight = cam.aspect < referenceAspect ? 0 : 1;
         }
     }
 }

@@ -12,45 +12,50 @@ namespace Match3.ECS.Systems
     {
         private EntityQuery clearQuery;
         private EntityQuery matchQuery;
+        private EntityQuery swapRequestQuery;
 
         public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<GameState>();
+            state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<MatchConfig>();
+            state.RequireForUpdate<GridConfig>();
+            state.RequireForUpdate<GameState>();
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
             matchQuery = SystemAPI.QueryBuilder().WithAll<MatchTag>().Build();
+            swapRequestQuery = SystemAPI.QueryBuilder().WithAll<SwapRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var gameState = SystemAPI.GetSingletonRW<GameState>();
-            if (gameState.ValueRO.Phase != GamePhase.Clear)
+            if (gameState.ValueRO.phase != GamePhase.Clear)
                 return;
 
             // Wait for delay timer
-            gameState.ValueRW.PhaseTimer -= SystemAPI.Time.DeltaTime;
-            if (gameState.ValueRO.PhaseTimer > 0)
+            gameState.ValueRW.phaseTimer -= SystemAPI.Time.DeltaTime;
+            if (gameState.ValueRO.phaseTimer > 0)
                 return;
 
             // Wait for clear animations to finish
             if (!clearQuery.IsEmpty)
                 return;
 
+            // No more matches - start falling
             if (matchQuery.IsEmpty)
             {
-                gameState.ValueRW.Phase = GamePhase.Fall;
+                gameState.ValueRW.phase = GamePhase.Fall;
                 return;
             }
-
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-            var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
+            
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
+            
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>().
+                CreateCommandBuffer(state.WorldUnmanaged);
 
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
             int clearCount = 0;
 
             // Start clear animation for each matched tile
@@ -60,12 +65,11 @@ namespace Match3.ECS.Systems
                     .WithNone<ClearTag>()
                     .WithEntityAccess())
             {
-                if (viewData.View != null)
-                    viewData.View.PlayClearAnim();
+                viewData.view?.PlayClearAnim();
 
                 // Remove tile from grid
-                var idx = gridConfig.GetIndex(tileData.ValueRO.GridPos);
-                gridCells[idx] = new() { Tile = Entity.Null };
+                var idx = gridConfig.GetIndex(tileData.ValueRO.gridPos);
+                gridCells[idx] = new() { tile = Entity.Null };
                 ecb.AddComponent<ClearTag>(entity);
                 ++clearCount;
             }
@@ -74,19 +78,17 @@ namespace Match3.ECS.Systems
             {
                 // Award score
                 var scoreEntity = ecb.CreateEntity();
-                ecb.AddComponent(scoreEntity, new ScoreEvent { Points = clearCount * matchConfig.PointsPerTile });
+                ecb.AddComponent<ScoreEvent>(scoreEntity, new() { points = clearCount * matchConfig.pointsPerTile });
 
                 // Play sound
                 var soundEntity = ecb.CreateEntity();
-                ecb.AddComponent(soundEntity, new PlaySoundRequest { Type = SoundType.Match });
-
-                var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
-                dirtyFlag.ValueRW.IsDirty = true;
+                ecb.AddComponent<PlaySoundRequest>(soundEntity, new() { type = SoundType.Match });
+                
+                SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
             }
 
             // Cleanup swap request
-            foreach (var (_, entity) in SystemAPI.Query<RefRO<SwapRequest>>().WithEntityAccess())
-                ecb.DestroyEntity(entity);
+            ecb.DestroyEntity(swapRequestQuery, EntityQueryCaptureMode.AtPlayback);
         }
     }
 
@@ -97,30 +99,46 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(ClearSystem))]
     public partial struct ClearCompleteSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private EntityQuery clearQuery;
+        private ComponentTypeSet removeSet;
+        
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ManagedReferences>();
+            state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            clearQuery = SystemAPI.QueryBuilder()
+                .WithAll<ClearDoneEvent, ClearTag, MatchTag, TileStateData>()
+                .Build();
+            
+            state.RequireForUpdate(clearQuery);
+            
+            removeSet = new ComponentTypeSet(
+                ComponentType.ReadWrite<ClearTag>(),
+                ComponentType.ReadWrite<ClearDoneEvent>(),
+                ComponentType.ReadWrite<DropTag>(),
+                ComponentType.ReadWrite<DropDoneEvent>(),
+                ComponentType.ReadWrite<MatchTag>()
+            );
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            if (refs?.TileFactory == null)
+            if (refs.tileFactory == null)
                 return;
-
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
-
-            foreach (var (_, entity) in SystemAPI.Query<ClearDoneEvent>()
-                .WithAll<ClearTag, MatchTag>().WithEntityAccess())
+            
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+            
+            ecb.RemoveComponent(clearQuery, removeSet, EntityQueryCaptureMode.AtPlayback);
+            
+            foreach (var (stateData, entity) in SystemAPI.Query<RefRW<TileStateData>>()
+                         .WithAll<ClearDoneEvent, ClearTag, MatchTag>()
+                         .WithEntityAccess())
             {
-                ecb.SetComponent<TileStateData>(entity, new() { State = TileState.Clear });
-                ecb.RemoveComponent<ClearTag>(entity);
-                ecb.RemoveComponent<ClearDoneEvent>(entity);
-                ecb.RemoveComponent<DropTag>(entity);
-                ecb.RemoveComponent<DropDoneEvent>(entity);
-                ecb.RemoveComponent<MatchTag>(entity);
-                refs.TileFactory.Return(entity);
+                stateData.ValueRW.state = TileState.Clear;
+                refs.tileFactory.Return(entity);
             }
         }
     }

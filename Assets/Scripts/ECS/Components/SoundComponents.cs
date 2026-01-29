@@ -19,7 +19,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct PlaySoundRequest : IComponentData
     {
-        public SoundType Type;
+        public SoundType type;
     }
 
     /// <summary>
@@ -27,6 +27,6 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct PlayBonusSoundRequest : IComponentData
     {
-        public BonusType Type;
+        public BonusType type;
     }
 }

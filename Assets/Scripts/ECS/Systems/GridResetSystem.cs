@@ -17,38 +17,34 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<ManagedReferences>();
             state.RequireForUpdate<GridResetRequest>();
-
+            
             requestQuery = SystemAPI.QueryBuilder().WithAll<GridResetRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            if (refs?.TileFactory == null)
+            if (refs.tileFactory == null)
                 return;
-
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-            var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
+            
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
 
             // Return all tiles to pool
             for (int i = 0; i < gridCells.Length; i++)
             {
-                if (!gridCells[i].IsEmpty)
-                {
-                    refs.TileFactory.Return(gridCells[i].Tile);
-                    gridCells[i] = new() { Tile = Entity.Null };
-                }
+                if (gridCells[i].IsEmpty) 
+                    continue;
+                
+                refs.tileFactory.Return(gridCells[i].tile);
+                gridCells[i] = new() { tile = Entity.Null };
             }
 
             var gameState = SystemAPI.GetSingletonRW<GameState>();
-            gameState.ValueRW.Phase = GamePhase.Idle;
-            gameState.ValueRW.PhaseTimer = 0;
+            gameState.ValueRW.phase = GamePhase.Idle;
+            gameState.ValueRW.phaseTimer = 0;
 
-            var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
-            dirtyFlag.ValueRW.IsDirty = true;
-
-            var movesCache = SystemAPI.GetComponentRW<PossibleMovesCache>(gridEntity);
-            movesCache.ValueRW.IsValid = false;
+            SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
+            SystemAPI.GetSingletonRW<PossibleMovesCache>().ValueRW.isValid = false;
 
             // Consume reset request and trigger regeneration
             state.EntityManager.DestroyEntity(requestQuery);

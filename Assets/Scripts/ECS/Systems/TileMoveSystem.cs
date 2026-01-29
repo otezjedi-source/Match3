@@ -43,15 +43,15 @@ namespace Match3.ECS.Systems
             ref TileWorldPos worldPos,
             EnabledRefRW<TileMove> moveEnabled)
         {
-            move.Elapsed += DeltaTime;
+            move.elapsed += DeltaTime;
 
-            float t = math.saturate(move.Elapsed / move.Duration);
+            float t = math.saturate(move.elapsed / move.duration);
             float ease = t * t; // Ease-in quadratic
-            worldPos.Pos = math.lerp(move.StartPos, move.TargetPos, ease);
+            worldPos.pos = math.lerp(move.startPos, move.targetPos, ease);
 
             if (t >= 1f)
             {
-                worldPos.Pos = move.TargetPos;
+                worldPos.pos = move.targetPos;
                 moveEnabled.ValueRW = false;
             }
         }
@@ -62,16 +62,21 @@ namespace Match3.ECS.Systems
     /// </summary>
     public static class TileMoveHelper
     {
-        public static void Start(EntityManager entityManager, Entity entity, float3 target, float duration, TileState tileState)
+        public static void Start(
+            EntityManager entityManager, 
+            Entity entity, 
+            float3 target, 
+            float duration, 
+            TileState tileState)
         {
-            var pos = entityManager.GetComponentData<TileWorldPos>(entity).Pos;
-            entityManager.SetComponentData<TileStateData>(entity, new() { State = tileState });
+            var pos = entityManager.GetComponentData<TileWorldPos>(entity).pos;
+            entityManager.SetComponentData<TileStateData>(entity, new() { state = tileState });
             entityManager.SetComponentData<TileMove>(entity, new()
             {
-                StartPos = pos,
-                TargetPos = target,
-                Duration = duration,
-                Elapsed = 0
+                startPos = pos,
+                targetPos = target,
+                duration = duration,
+                elapsed = 0
             });
             entityManager.SetComponentEnabled<TileMove>(entity, true);
         }

@@ -54,7 +54,7 @@ namespace Match3.Controllers
             if (!gameStateQuery.IsEmpty)
             {
                 gameStateQuery.CompleteDependency();
-                CurrentPhase.Value = gameStateQuery.GetSingleton<GameState>().Phase;
+                CurrentPhase.Value = gameStateQuery.GetSingleton<GameState>().phase;
             }
 
             // Check for game over event (one-shot entity)

@@ -9,26 +9,31 @@ namespace Match3.ECS.Systems
     [UpdateInGroup(typeof(GameSyncSystemGroup))]
     public partial struct ScoreSyncSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private EntityQuery scoreEventQuery;
+        
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ManagedReferences>();
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            scoreEventQuery = SystemAPI.QueryBuilder().WithAll<ScoreEvent>().Build();
+            state.RequireForUpdate(scoreEventQuery);
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            if (refs?.ScoreController == null)
+            if (refs.scoreController == null)
                 return;
 
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            int points = 0;
+            foreach (var scoreEvent in SystemAPI.Query<RefRO<ScoreEvent>>())
+                points += scoreEvent.ValueRO.points;
+            refs.scoreController.AddScore(points);
 
-            foreach (var (scoreEvent, entity) in SystemAPI.Query<RefRO<ScoreEvent>>().WithEntityAccess())
-            {
-                refs.ScoreController.AddScore(scoreEvent.ValueRO.Points);
-                ecb.DestroyEntity(entity);
-            }
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+            ecb.DestroyEntity(scoreEventQuery, EntityQueryCaptureMode.AtPlayback);
         }
     }
 }

@@ -15,11 +15,15 @@ namespace Match3.ECS.Systems
     [UpdateInGroup(typeof(GameSystemGroup))]
     public partial struct GridCacheSystem : ISystem
     {
+        private ComponentLookup<TileData> tileLookup;
+        
         [BurstCompile]
-        public readonly void OnCreate(ref SystemState state)
+        public void OnCreate(ref SystemState state)
         {
-            state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<GridTag>();
+            state.RequireForUpdate<GridConfig>();
+            
+            tileLookup = SystemAPI.GetComponentLookup<TileData>(true);
         }
 
         [BurstCompile]
@@ -31,15 +35,15 @@ namespace Match3.ECS.Systems
         [BurstCompile]
         public void OnUpdate(ref SystemState state)
         {
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-            var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
-            if (!dirtyFlag.ValueRO.IsDirty)
+            var dirtyFlag = SystemAPI.GetSingletonRW<GridDirtyFlag>();
+            if (!dirtyFlag.ValueRO.isDirty)
                 return;
-
+            
+            tileLookup.Update(ref state);
+            
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
-            var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
-            var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
-            var tileLookup = SystemAPI.GetComponentLookup<TileData>(true);
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
+            var typeCache = SystemAPI.GetSingletonBuffer<GridTileTypeCache>();
 
             if (typeCache.Length != gridConfig.CellCount)
                 typeCache.Length = gridConfig.CellCount;
@@ -53,16 +57,15 @@ namespace Match3.ECS.Systems
             state.Dependency = job.Schedule(gridCells.Length, 64, state.Dependency);
             state.Dependency.Complete();
 
-            dirtyFlag.ValueRW.IsDirty = false;
+            dirtyFlag.ValueRW.isDirty = false;
 
             // Invalidate moves cache since grid changed
-            var movesCache = SystemAPI.GetSingletonRW<PossibleMovesCache>();
-            movesCache.ValueRW.IsValid = false;
+            SystemAPI.GetSingletonRW<PossibleMovesCache>().ValueRW.isValid = false;
         }
     }
 
     [BurstCompile]
-    struct UpdateTypeCacheJob : IJobParallelFor
+    internal struct UpdateTypeCacheJob : IJobParallelFor
     {
         [ReadOnly] public NativeArray<GridCell> GridCells;
         [WriteOnly] public NativeArray<GridTileTypeCache> TypeCache;
@@ -71,11 +74,11 @@ namespace Match3.ECS.Systems
         public void Execute(int i)
         {
             if (GridCells[i].IsEmpty)
-                TypeCache[i] = new() { Type = TileType.None };
+                TypeCache[i] = new() { type = TileType.None };
             else
             {
-                var tileData = TileLookup[GridCells[i].Tile];
-                TypeCache[i] = new() { Type = tileData.Type };
+                var tileData = TileLookup[GridCells[i].tile];
+                TypeCache[i] = new() { type = tileData.type };
             }
         }
     }

@@ -12,7 +12,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public class TileViewData : IComponentData
     {
-        public TileView View;
+        public TileView view;
     }
 
     /// <summary>
@@ -22,9 +22,9 @@ namespace Match3.ECS.Components
     /// </summary>
     public class ManagedReferences : IComponentData
     {
-        public ScoreController ScoreController;
-        public SoundController SoundController;
-        public TileTypeRegistry TileTypeRegistry;
-        public TileFactory TileFactory;
+        public ScoreController scoreController;
+        public SoundController soundController;
+        public TileTypeRegistry tileTypeRegistry;
+        public TileFactory tileFactory;
     }
 }

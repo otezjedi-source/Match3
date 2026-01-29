@@ -19,6 +19,7 @@ namespace Match3.ECS.Systems
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<MatchConfig>();
@@ -37,32 +38,31 @@ namespace Match3.ECS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var gameState = SystemAPI.GetSingletonRW<GameState>();
-            if (gameState.ValueRO.Phase != GamePhase.Idle)
+            if (gameState.ValueRO.phase != GamePhase.Idle)
                 return;
 
             // Only recalculate when grid has changed (dirty flag cleared = cache invalid)
             var movesCache = SystemAPI.GetSingletonRW<PossibleMovesCache>();
-            if (!movesCache.ValueRO.IsValid)
-            {
-                var gridConfig = SystemAPI.GetSingleton<GridConfig>();
-                var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
-                var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-                var typeCache = SystemAPI.GetBuffer<GridTileTypeCache>(gridEntity);
+            if (movesCache.ValueRO.isValid)
+                return;
+            
+            var gridConfig = SystemAPI.GetSingleton<GridConfig>();
+            var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
+            var typeCache = SystemAPI.GetSingletonBuffer<GridTileTypeCache>();
 
-                // Copy types to native list for move checking
-                gridTypesCache.Clear();
-                for (int i = 0; i < typeCache.Length; i++)
-                    gridTypesCache.Add(typeCache[i].Type);
+            // Copy types to native list for move checking
+            gridTypesCache.Clear();
+            for (int i = 0; i < typeCache.Length; i++)
+                gridTypesCache.Add(typeCache[i].type);
 
-                bool hasMoves = PossibleMovesChecker.CheckMoves(ref gridTypesCache, ref gridConfig, ref matchConfig);
-                movesCache.ValueRW.HasMoves = hasMoves;
-                movesCache.ValueRW.IsValid = true;
-            }
+            bool hasMoves = PossibleMovesChecker.CheckMoves(ref gridTypesCache, ref gridConfig, ref matchConfig);
+            movesCache.ValueRW.hasMoves = hasMoves;
+            movesCache.ValueRW.isValid = true;
 
             // No moves = game over
-            if (!movesCache.ValueRO.HasMoves)
+            if (!hasMoves)
             {
-                gameState.ValueRW.Phase = GamePhase.GameOver;
+                gameState.ValueRW.phase = GamePhase.GameOver;
                 state.EntityManager.CreateSingleton<GameOverEvent>();
             }
         }
@@ -82,16 +82,16 @@ namespace Match3.ECS.Systems
         [BurstCompile]
         public static bool CheckMoves(ref NativeList<TileType> types, ref GridConfig gridConfig, ref MatchConfig matchConfig)
         {
-            for (int x = 0; x < gridConfig.Width; x++)
+            for (int x = 0; x < gridConfig.width; x++)
             {
-                for (int y = 0; y < gridConfig.Height; y++)
+                for (int y = 0; y < gridConfig.height; y++)
                 {
                     // Try swap right
-                    if (x < gridConfig.Width - 1 && TrySwapCheck(ref types, x, y, x + 1, y, ref gridConfig, ref matchConfig))
+                    if (x < gridConfig.width - 1 && TrySwapCheck(ref types, x, y, x + 1, y, ref gridConfig, ref matchConfig))
                         return true;
 
                     // Try swap up
-                    if (y < gridConfig.Height - 1 && TrySwapCheck(ref types, x, y, x, y + 1, ref gridConfig, ref matchConfig))
+                    if (y < gridConfig.height - 1 && TrySwapCheck(ref types, x, y, x, y + 1, ref gridConfig, ref matchConfig))
                         return true;
                 }
             }
@@ -147,19 +147,19 @@ namespace Match3.ECS.Systems
             int hCount = 1;
             for (int i = x - 1; i >= 0 && types[gridConfig.GetIndex(i, y)] == type; i--)
                 hCount++;
-            for (int i = x + 1; i < gridConfig.Width && types[gridConfig.GetIndex(i, y)] == type; i++)
+            for (int i = x + 1; i < gridConfig.width && types[gridConfig.GetIndex(i, y)] == type; i++)
                 hCount++;
 
-            if (hCount >= matchConfig.MatchCount)
+            if (hCount >= matchConfig.matchCount)
                 return true;
 
             int vCount = 1;
             for (int i = y - 1; i >= 0 && types[gridConfig.GetIndex(x, i)] == type; i--)
                 vCount++;
-            for (int i = y + 1; i < gridConfig.Height && types[gridConfig.GetIndex(x, i)] == type; i++)
+            for (int i = y + 1; i < gridConfig.height && types[gridConfig.GetIndex(x, i)] == type; i++)
                 vCount++;
 
-            return vCount >= matchConfig.MatchCount;
+            return vCount >= matchConfig.matchCount;
         }
     }
 }

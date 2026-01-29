@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using Match3.ECS.Components;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Serialization;
 
 namespace Match3.Core
 {
@@ -13,53 +14,62 @@ namespace Match3.Core
     [CreateAssetMenu(fileName = "GameConfig", menuName = "Match3/GameConfig")]
     public class GameConfig : ScriptableObject
     {
+        [FormerlySerializedAs("GridWidth")]
         [Header("Grid Settings")]
         [Min(3)]
         [Tooltip("Width of the game grid. Minimum 3.")]
-        public int GridWidth = 5;
+        public int gridWidth = 5;
 
+        [FormerlySerializedAs("GridHeight")]
         [Min(3)]
         [Tooltip("Height of the game grid. Minimum 3.")]
-        public int GridHeight = 9;
+        public int gridHeight = 9;
 
+        [FormerlySerializedAs("MaxGridInitAttempts")]
         [Min(1)]
         [Tooltip("Maximum attempts to generate a valid grid without matches.")]
-        public int MaxGridInitAttempts = 100;
+        public int maxGridInitAttempts = 100;
 
+        [FormerlySerializedAs("MatchCount")]
         [Header("Game Settings")]
         [Range(3, 7)]
         [Tooltip("Number of tiles needed to form a match.")]
-        public int MatchCount = 3;
+        public int matchCount = 3;
 
+        [FormerlySerializedAs("PointsPerTile")]
         [Min(1)]
         [Tooltip("Points awarded per matched tile.")]
-        public int PointsPerTile = 10;
+        public int pointsPerTile = 10;
 
+        [FormerlySerializedAs("SwapDuration")]
         [Header("Timings")]
         [Min(0.01f)]
         [Tooltip("Duration of swap animation in seconds.")]
-        public float SwapDuration = 0.3f;
+        public float swapDuration = 0.3f;
 
+        [FormerlySerializedAs("FallDuration")]
         [Min(0.01f)]
         [Tooltip("Base duration of fall animation per cell.")]
-        public float FallDuration = 0.3f;
+        public float fallDuration = 0.3f;
 
+        [FormerlySerializedAs("MinDragDistance")]
         [Min(0.01f)]
         [Tooltip("Minimum drag distance to register a swap.")]
-        public float MinDragDistance = 0.5f;
+        public float minDragDistance = 0.5f;
 
+        [FormerlySerializedAs("MatchDelay")]
         [Min(0f)]
         [Tooltip("Delay before clearing matched tiles.")]
-        public float MatchDelay = 0.2f;
+        public float matchDelay = 0.2f;
 
-        [Header("Tiles data")]
-        public List<TileData> TilesData;
+        [FormerlySerializedAs("TilesData")] [Header("Tiles data")]
+        public List<TileData> tilesData;
 
-        [Header("Bonuses data")]
-        public List<BonusData> BonusesData;
+        [FormerlySerializedAs("BonusesData")] [Header("Bonuses data")]
+        public List<BonusData> bonusesData;
 
-        [Header("Sounds data")]
-        public List<SoundData> SoundsData;
+        [FormerlySerializedAs("SoundsData")] [Header("Sounds data")]
+        public List<SoundData> soundsData;
 
         [Serializable]
         public class TileData
@@ -78,7 +88,7 @@ namespace Match3.Core
         public class BonusData
         {
             public BonusType type;
-            public int matchCount;
+            [Min(4)] public int matchCount;
             public AssetReference spriteRef;
             public AudioClip sound;
         }
@@ -97,22 +107,22 @@ namespace Match3.Core
         private void OnValidate()
         {
             // Ensure minimum grid size
-            GridWidth = Mathf.Max(3, GridWidth);
-            GridHeight = Mathf.Max(3, GridHeight);
+            gridWidth = Mathf.Max(3, gridWidth);
+            gridHeight = Mathf.Max(3, gridHeight);
             
             // MatchCount cannot exceed grid dimensions
-            int maxMatchCount = Mathf.Min(GridWidth, GridHeight);
-            MatchCount = Mathf.Clamp(MatchCount, 3, maxMatchCount);
+            int maxMatchCount = Mathf.Min(gridWidth, gridHeight);
+            matchCount = Mathf.Clamp(matchCount, 3, maxMatchCount);
             
             // Ensure positive timings
-            SwapDuration = Mathf.Max(0.01f, SwapDuration);
-            FallDuration = Mathf.Max(0.01f, FallDuration);
-            MinDragDistance = Mathf.Max(0.01f, MinDragDistance);
-            MatchDelay = Mathf.Max(0f, MatchDelay);
+            swapDuration = Mathf.Max(0.01f, swapDuration);
+            fallDuration = Mathf.Max(0.01f, fallDuration);
+            minDragDistance = Mathf.Max(0.01f, minDragDistance);
+            matchDelay = Mathf.Max(0f, matchDelay);
             
             // Ensure positive values
-            MaxGridInitAttempts = Mathf.Max(1, MaxGridInitAttempts);
-            PointsPerTile = Mathf.Max(1, PointsPerTile);
+            maxGridInitAttempts = Mathf.Max(1, maxGridInitAttempts);
+            pointsPerTile = Mathf.Max(1, pointsPerTile);
 
             ValidateTilesData();
             ValidateBonusesData();
@@ -121,19 +131,19 @@ namespace Match3.Core
 
         private void ValidateTilesData()
         {
-            if (TilesData == null || TilesData.Count == 0)
+            if (tilesData == null || tilesData.Count == 0)
             {
                 Debug.LogWarning($"[GameConfig] No tile data configured in {name}");
                 return;
             }
 
             // Check for minimum number of tile types (need at least 3 for valid gameplay)
-            if (TilesData.Count < 3)
-                Debug.LogWarning($"[GameConfig] At least 3 tile types recommended for gameplay variety. Current: {TilesData.Count}");
+            if (tilesData.Count < 3)
+                Debug.LogWarning($"[GameConfig] At least 3 tile types recommended for gameplay variety. Current: {tilesData.Count}");
 
             // Check for duplicate types
             var seenTypes = new HashSet<TileType>();
-            foreach (var data in TilesData)
+            foreach (var data in tilesData)
             {
                 if (data.type == TileType.None)
                 {
@@ -151,26 +161,33 @@ namespace Match3.Core
 
         private void ValidateBonusesData()
         {
+            if (bonusesData == null || bonusesData.Count == 0)
+                return;
+            
             var seenTypes = new HashSet<BonusType>();
-            foreach (var data in BonusesData)
+            foreach (var data in bonusesData)
             {
                 if (!seenTypes.Add(data.type))
                     Debug.LogWarning($"[GameConfig] Duplicate BonusType found: {data.type}");
 
-                if (data.matchCount <= MatchCount)
-                    Debug.LogWarning($"[GameConfig] BonusType {data.type} must be more than {MatchCount}");
+                if (data.matchCount <= matchCount)
+                    Debug.LogWarning($"[GameConfig] BonusType {data.type} must be more than {matchCount}");
+                
+                if (data.matchCount > Mathf.Min(gridWidth, gridHeight))
+                    Debug.LogWarning($"[GameConfig] BonusType {data.type} must not exceed grid dimensions");
 
                 if (data.spriteRef == null || !data.spriteRef.RuntimeKeyIsValid())
                     Debug.LogWarning($"[GameConfig] BonusType {data.type} has no valid sprite reference");
 
-                data.matchCount = Mathf.Max(data.matchCount, MatchCount + 1);
+                int maxCount = Mathf.Min(gridWidth, gridHeight);
+                data.matchCount = Mathf.Clamp(data.matchCount, matchCount + 1, maxCount);
             }
         }
 
         private void ValidateSoundsData()
         {
             var seenTypes = new HashSet<SoundType>();
-            foreach (var data in SoundsData)
+            foreach (var data in soundsData)
             {
                 if (!seenTypes.Add(data.type))
                     Debug.LogWarning($"[GameConfig] Duplicate SoundType found: {data.type}");
@@ -186,36 +203,85 @@ namespace Match3.Core
         {
             error = null;
             
-            if (GridWidth < 3 || GridHeight < 3)
+            if (gridWidth < 3 || gridHeight < 3)
             {
                 error = "Grid dimensions must be at least 3x3";
                 return false;
             }
             
-            if (MatchCount < 3 || MatchCount > Mathf.Min(GridWidth, GridHeight))
+            if (matchCount < 3 || matchCount > Mathf.Min(gridWidth, gridHeight))
             {
-                error = $"MatchCount must be between 3 and {Mathf.Min(GridWidth, GridHeight)}";
+                error = $"MatchCount must be between 3 and {Mathf.Min(gridWidth, gridHeight)}";
                 return false;
             }
             
-            if (TilesData == null || TilesData.Count < 2)
+            if (!ValidateTiles(out error))
+                return false;
+            
+            if (!ValidateBonuses(out error))
+                return false;
+            
+            return true;
+        }
+
+        private bool ValidateTiles(out string error)
+        {
+            error = string.Empty;
+            
+            if (tilesData == null || tilesData.Count < 2)
             {
                 error = "At least 2 tile types are required";
                 return false;
             }
             
-            // Check if we have enough unique types
             var uniqueTypes = new HashSet<TileType>();
-            foreach (var data in TilesData)
+            foreach (var data in tilesData)
             {
                 if (data.type != TileType.None && data.IsValid)
                     uniqueTypes.Add(data.type);
             }
-            
+
             if (uniqueTypes.Count < 2)
             {
-                error = "At least 2 valid unique tile types are required";
+                error = "At least 2 unique tiles are required";
                 return false;
+            }
+
+            return true;
+        }
+
+        private bool ValidateBonuses(out string error)
+        {
+            error = string.Empty;
+            if (bonusesData == null || bonusesData.Count == 0)
+                return true;
+            
+            var uniqueTypes = new HashSet<BonusType>();
+            foreach (var data in bonusesData)
+            {
+                if (!uniqueTypes.Add(data.type))
+                {
+                    error = $"[GameConfig] Duplicate BonusType found: {data.type}";
+                    return false;
+                }
+
+                if (data.matchCount <= matchCount)
+                {
+                    error = $"[GameConfig] BonusType {data.type} must be more than {matchCount}";
+                    return false;
+                }
+
+                if (data.matchCount > Mathf.Min(gridWidth, gridHeight))
+                {
+                    error = $"[GameConfig] BonusType {data.type} must not exceed grid dimensions";
+                    return false;
+                }
+
+                if (data.spriteRef == null || !data.spriteRef.RuntimeKeyIsValid())
+                {
+                    error = $"[GameConfig] BonusType {data.type} has no valid sprite reference";
+                    return false;
+                }
             }
             
             return true;

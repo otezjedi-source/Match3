@@ -32,13 +32,13 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct TileData : IComponentData
     {
-        public TileType Type;
-        public int2 GridPos;
+        public TileType type;
+        public int2 gridPos;
     }
 
     public struct TileStateData : IComponentData
     {
-        public TileState State;
+        public TileState state;
     }
 
     /// <summary>
@@ -46,7 +46,7 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct TileWorldPos : IComponentData
     {
-        public float3 Pos;
+        public float3 pos;
     }
 
     /// <summary>
@@ -55,10 +55,10 @@ namespace Match3.ECS.Components
     /// </summary>
     public struct TileMove : IComponentData, IEnableableComponent
     {
-        public float3 StartPos;
-        public float3 TargetPos;
-        public float Duration;
-        public float Elapsed;
+        public float3 startPos;
+        public float3 targetPos;
+        public float duration;
+        public float elapsed;
     }
 
     // Tags for tile state tracking

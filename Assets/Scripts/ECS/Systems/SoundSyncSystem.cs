@@ -1,4 +1,3 @@
-using Match3.Controllers;
 using Match3.ECS.Components;
 using Unity.Entities;
 
@@ -10,32 +9,37 @@ namespace Match3.ECS.Systems
     [UpdateInGroup(typeof(GameSyncSystemGroup))]
     public partial struct SoundSyncSystem : ISystem
     {
-        public readonly void OnCreate(ref SystemState state)
+        private EntityQuery soundRequestQuery;
+        private EntityQuery bonusRequestQuery;
+        
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<ManagedReferences>();
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
+
+            soundRequestQuery = SystemAPI.QueryBuilder().WithAll<PlaySoundRequest>().Build();
+            bonusRequestQuery = SystemAPI.QueryBuilder().WithAll<PlayBonusSoundRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
         {
+            if (soundRequestQuery.IsEmpty && bonusRequestQuery.IsEmpty)
+                return;
+            
             var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-            if (refs?.SoundController == null)
+            if (refs.soundController == null)
                 return;
 
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
 
-            foreach (var (request, entity) in SystemAPI.Query<RefRO<PlaySoundRequest>>().WithEntityAccess())
-            {
-                refs.SoundController.Play(request.ValueRO.Type);
-                ecb.DestroyEntity(entity);
-            }
-
-            foreach (var (request, entity) in SystemAPI.Query<RefRO<PlayBonusSoundRequest>>().WithEntityAccess())
-            {
-                refs.SoundController.PlayBonus(request.ValueRO.Type);
-                ecb.DestroyEntity(entity);
-            }
+            foreach (var request in SystemAPI.Query<RefRO<PlaySoundRequest>>())
+                refs.soundController.Play(request.ValueRO.type);
+            foreach (var request in SystemAPI.Query<RefRO<PlayBonusSoundRequest>>())
+                refs.soundController.PlayBonus(request.ValueRO.type);
+            
+            ecb.DestroyEntity(soundRequestQuery, EntityQueryCaptureMode.AtPlayback);
+            ecb.DestroyEntity(bonusRequestQuery, EntityQueryCaptureMode.AtPlayback);
         }
     }
 }

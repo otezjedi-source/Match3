@@ -12,23 +12,26 @@ namespace Match3.ECS.Systems
     [UpdateAfter(typeof(TileMoveSystem))]
     public partial struct SwapSystem : ISystem
     {
+        private ComponentLookup<TileData> tileLookup;
         private EntityQuery playerSwapRequestQuery;
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
+            state.RequireForUpdate<GridTag>();
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<GridConfig>();
             state.RequireForUpdate<TimingConfig>();
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
+            tileLookup = SystemAPI.GetComponentLookup<TileData>(true);
             playerSwapRequestQuery = SystemAPI.QueryBuilder().WithAll<PlayerSwapRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
         {
             var gameState = SystemAPI.GetSingletonRW<GameState>();
-            if (gameState.ValueRO.Phase != GamePhase.Idle)
+            if (gameState.ValueRO.phase != GamePhase.Idle)
             {
                 // Discard requests during animations
                 if (!playerSwapRequestQuery.IsEmpty)
@@ -36,20 +39,24 @@ namespace Match3.ECS.Systems
                 return;
             }
 
+            if (playerSwapRequestQuery.IsEmpty)
+                return;
+            
+            tileLookup.Update(ref state);
+
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var timingConfig = SystemAPI.GetSingleton<TimingConfig>();
-            var gridEntity = SystemAPI.GetSingletonEntity<GridTag>();
-            var gridCells = SystemAPI.GetBuffer<GridCell>(gridEntity);
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
 
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
 
             bool playSound = false;
 
             foreach (var (request, entity) in SystemAPI.Query<RefRO<PlayerSwapRequest>>().WithEntityAccess())
             {
-                var posA = request.ValueRO.PosA;
-                var posB = request.ValueRO.PosB;
+                var posA = request.ValueRO.posA;
+                var posB = request.ValueRO.posB;
                 if (!gridConfig.IsValidPos(posA) || !gridConfig.IsValidPos(posB))
                 {
                     ecb.DestroyEntity(entity);
@@ -65,41 +72,38 @@ namespace Match3.ECS.Systems
                 }
 
                 // Swap tiles in grid
-                var tileA = gridCells[idxA].Tile;
-                var tileB = gridCells[idxB].Tile;
-                gridCells[idxA] = new() { Tile = tileB };
-                gridCells[idxB] = new() { Tile = tileA };
+                var tileA = gridCells[idxA].tile;
+                var tileB = gridCells[idxB].tile;
+                gridCells[idxA] = new() { tile = tileB };
+                gridCells[idxB] = new() { tile = tileA };
 
                 // Update tile grid positions
-                var tileLookup = SystemAPI.GetComponentLookup<TileData>(true);
                 var tileDataA = tileLookup[tileA];
                 var tileDataB = tileLookup[tileB];
-                tileDataA.GridPos = posB;
-                tileDataB.GridPos = posA;
+                tileDataA.gridPos = posB;
+                tileDataB.gridPos = posA;
                 state.EntityManager.SetComponentData(tileA, tileDataA);
                 state.EntityManager.SetComponentData(tileB, tileDataB);
 
                 // Start swap animations
-                TileMoveHelper.Start(state.EntityManager, tileA, new(posB, 0), timingConfig.SwapDuration, TileState.Swap);
-                TileMoveHelper.Start(state.EntityManager, tileB, new(posA, 0), timingConfig.SwapDuration, TileState.Swap);
+                TileMoveHelper.Start(state.EntityManager, tileA, new(posB, 0), timingConfig.swapDuration, TileState.Swap);
+                TileMoveHelper.Start(state.EntityManager, tileB, new(posA, 0), timingConfig.swapDuration, TileState.Swap);
                 playSound = true;
 
                 // Track swap for potential revert if no match
                 var swapRequest = ecb.CreateEntity();
                 ecb.AddComponent(swapRequest, new SwapRequest
                 {
-                    TileA = tileA,
-                    TileB = tileB,
-                    PosA = posA,
-                    PosB = posB,
-                    IsReverting = false,
-                    IsHorizontal = posA.y == posB.y,
+                    tileA = tileA,
+                    tileB = tileB,
+                    posA = posA,
+                    posB = posB,
+                    isReverting = false,
+                    isHorizontal = posA.y == posB.y,
                 });
 
-                gameState.ValueRW.Phase = GamePhase.Swap;
-
-                var dirtyFlag = SystemAPI.GetComponentRW<GridDirtyFlag>(gridEntity);
-                dirtyFlag.ValueRW.IsDirty = true;
+                gameState.ValueRW.phase = GamePhase.Swap;
+                SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
 
                 ecb.DestroyEntity(entity);
             }
@@ -107,7 +111,7 @@ namespace Match3.ECS.Systems
             if (playSound)
             {
                 var soundEntity = ecb.CreateEntity();
-                ecb.AddComponent(soundEntity, new PlaySoundRequest { Type = SoundType.Swap });
+                ecb.AddComponent(soundEntity, new PlaySoundRequest { type = SoundType.Swap });
             }
         }
     }
@@ -121,7 +125,7 @@ namespace Match3.ECS.Systems
     public partial struct SwapCompleteSystem : ISystem
     {
         [BurstCompile]
-        public readonly void OnCreate(ref SystemState state)
+        public void OnCreate(ref SystemState state)
         {
             state.RequireForUpdate<GameState>();
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
@@ -130,16 +134,16 @@ namespace Match3.ECS.Systems
         public void OnUpdate(ref SystemState state)
         {
             var gameState = SystemAPI.GetSingletonRW<GameState>();
-            if (gameState.ValueRO.Phase != GamePhase.Swap)
+            if (gameState.ValueRO.phase != GamePhase.Swap)
                 return;
 
-            var ecbSingleton = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>();
-            var ecb = ecbSingleton.CreateCommandBuffer(state.WorldUnmanaged);
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
 
             foreach (var (request, entity) in SystemAPI.Query<RefRW<SwapRequest>>().WithEntityAccess())
             {
-                var tileA = request.ValueRO.TileA;
-                var tileB = request.ValueRO.TileB;
+                var tileA = request.ValueRO.tileA;
+                var tileB = request.ValueRO.tileB;
 
                 // Check if tiles are still moving
                 bool movingA = state.EntityManager.IsComponentEnabled<TileMove>(tileA);
@@ -147,15 +151,15 @@ namespace Match3.ECS.Systems
                 if (movingA || movingB)
                     continue;
 
-                if (request.ValueRO.IsReverting)
+                if (request.ValueRO.isReverting)
                 {
                     // Revert complete, back to idle
-                    gameState.ValueRW.Phase = GamePhase.Idle;
+                    gameState.ValueRW.phase = GamePhase.Idle;
                     ecb.DestroyEntity(entity);
                 }
                 else
                     // Swap complete, check for matches
-                    gameState.ValueRW.Phase = GamePhase.Match;
+                    gameState.ValueRW.phase = GamePhase.Match;
             }
         }
     }
