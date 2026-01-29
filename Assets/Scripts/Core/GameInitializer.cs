@@ -72,7 +72,7 @@ namespace Match3.Core
 
                 try
                 {
-                    await tileFactory.WaitForTilesLoaded();
+                    await tileFactory.WaitForLoading(ct);
                 }
                 catch (OperationCanceledException) { }
             }
