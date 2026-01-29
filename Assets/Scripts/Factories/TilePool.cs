@@ -78,7 +78,7 @@ namespace Match3.Factories
         {
             if (!entityManager.HasComponent<TileViewData>(entity))
                 return null;
-            return entityManager.GetComponentData<TileViewData>(entity)?.view;
+            return entityManager.GetComponentObject<TileViewData>(entity)?.view;
         }
     }
 }

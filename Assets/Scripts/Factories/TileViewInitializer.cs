@@ -63,7 +63,7 @@ namespace Match3.Factories
             using var linked = CancellationTokenSource.CreateLinkedTokenSource(cts.Token, ct);
             try
             {
-                await UniTask.WhenAll(tasks).AttachExternalCancellation(linked.Token);
+                await UniTask.WhenAll(currentTasks).AttachExternalCancellation(linked.Token);
             }
             catch (OperationCanceledException) { }
         }

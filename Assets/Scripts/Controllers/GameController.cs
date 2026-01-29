@@ -108,6 +108,12 @@ namespace Match3.Controllers
             CurrentPhase?.Dispose();
             IsGameOver?.Dispose();
             ClearQueries();
+            
+            if (WorldExists)
+            {
+                World.DefaultGameObjectInjectionWorld.Dispose();
+                DefaultWorldInitialization.Initialize("Default world");
+            }
         }
 
         private void CacheQuery<T>() where T : unmanaged, IComponentData
