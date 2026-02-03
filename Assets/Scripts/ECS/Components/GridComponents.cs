@@ -30,12 +30,20 @@ namespace Match3.ECS.Components
     }
 
     /// <summary>
-    /// Positions of matched tiles. Populated by MatchSystem, consumed by ClearSystem.
+    /// Group of matched tiles of the same type. Populated by MatchSystem.
     /// </summary>
-    [InternalBufferCapacity(32)]
-    public struct MatchResult : IBufferElementData
+    [InternalBufferCapacity(8)]
+    public struct MatchGroup : IBufferElementData
     {
-        public int2 pos;
+        public TileType type;
+        public int count;
+        public int2 minPos;
+        public int2 maxPos;
+        public int2 bonusPos;
+
+        public bool IsHorizontalLine => minPos.y == maxPos.y && minPos.x != maxPos.x;
+        public bool IsVerticalLine => minPos.x == maxPos.x && minPos.y != maxPos.y;
+        public bool IsLine => IsHorizontalLine || IsVerticalLine;
     }
 
     /// <summary>

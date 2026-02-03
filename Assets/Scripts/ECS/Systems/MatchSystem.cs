@@ -16,7 +16,15 @@ namespace Match3.ECS.Systems
     public partial struct MatchSystem : ISystem
     {
         private NativeHashSet<int2> matchesCache;
+        private NativeHashMap<int, MatchGroup> groupsCache;
+        private NativeList<Entity> markTiles;
         private ComponentLookup<MatchTag> matchLookup;
+
+        private struct SwapInfo
+        {
+            public int2 posA;
+            public int2 posB;
+        }
 
         [BurstCompile]
         public void OnCreate(ref SystemState state)
@@ -29,6 +37,8 @@ namespace Match3.ECS.Systems
             state.RequireForUpdate<EndSimulationEntityCommandBufferSystem.Singleton>();
 
             matchesCache = new(64, Allocator.Persistent);
+            groupsCache = new(8, Allocator.Persistent);
+            markTiles = new(32, Allocator.Persistent);
             matchLookup = SystemAPI.GetComponentLookup<MatchTag>(true);
         }
 
@@ -37,6 +47,10 @@ namespace Match3.ECS.Systems
         {
             if (matchesCache.IsCreated)
                 matchesCache.Dispose();
+            if (groupsCache.IsCreated)
+                groupsCache.Dispose();
+            if (markTiles.IsCreated)
+                markTiles.Dispose();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -49,46 +63,35 @@ namespace Match3.ECS.Systems
 
             var gridConfig = SystemAPI.GetSingleton<GridConfig>();
             var matchConfig = SystemAPI.GetSingleton<MatchConfig>();
-            var timingConfig = SystemAPI.GetSingleton<TimingConfig>();
             var typeCache = SystemAPI.GetSingletonBuffer<GridTileTypeCache>();
-            var matchResults = SystemAPI.GetSingletonBuffer<MatchResult>();
-            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
-            
-            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
-                .CreateCommandBuffer(state.WorldUnmanaged);
 
-            // Find all matches using line scanning algorithm
+            FindMatches(typeCache, gridConfig, matchConfig);
+            
+            var matchGroups = SystemAPI.GetSingletonBuffer<MatchGroup>();
+            var swap = GetSwapInfo(ref state);
+
+            BuildMatchGroups(typeCache, matchGroups, gridConfig, swap);
+
+            if (matchGroups.Length > 0)
+                ProcessMatches(ref state, gridConfig);
+            else
+                ProcessNoMatches(ref state, gridConfig);
+        }
+
+        /// <summary>
+        /// Find all matches using line scanning algorithm
+        /// </summary>
+        private void FindMatches(
+            DynamicBuffer<GridTileTypeCache> typeCache,
+            GridConfig gridConfig,
+            MatchConfig matchConfig)
+        {
             matchesCache.Clear();
             if (matchesCache.Capacity < gridConfig.CellCount)
                 matchesCache.Capacity = gridConfig.CellCount;
 
             ScanLines(matchesCache, typeCache, gridConfig, matchConfig, true);
             ScanLines(matchesCache, typeCache, gridConfig, matchConfig, false);
-
-            // Store results in buffer for other systems to use
-            matchResults.Clear();
-            foreach (var pos in matchesCache)
-                matchResults.Add(new() { pos = pos });
-
-            if (matchResults.Length > 0)
-            {
-                // Matches found - proceed to clear phase
-                MarkMatchedTiles(ecb, gridCells, matchResults, gridConfig);
-
-                gameState = SystemAPI.GetSingletonRW<GameState>();
-                gameState.ValueRW.phase = GamePhase.Clear;
-                gameState.ValueRW.phaseTimer = timingConfig.matchDelay;
-                return;
-            }
-
-            // No matches - check if we need to revert the swap
-            gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
-            
-            bool isReverting = HandleSwaps(ref state, ecb, gridCells, gridConfig, timingConfig);
-            if (isReverting)
-                SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
-            
-            gameState.ValueRW.phase = isReverting ? GamePhase.Swap : GamePhase.Idle;
         }
 
         /// <summary>
@@ -147,25 +150,127 @@ namespace Match3.ECS.Systems
             }
         }
 
+        /// <summary>
+        /// Get swap info of exists
+        /// </summary>
+        private SwapInfo? GetSwapInfo(ref SystemState state)
+        {
+            foreach (var request in SystemAPI.Query<RefRO<SwapRequest>>())
+            {
+                if (request.ValueRO.isReverting)
+                    continue;
+
+                return new()
+                {
+                    posA = request.ValueRO.posA,
+                    posB = request.ValueRO.posB,
+                };
+            }
+
+            return null;
+        }
+        
+        [BurstCompile]
+        private void BuildMatchGroups(
+            DynamicBuffer<GridTileTypeCache> typeCache,
+            DynamicBuffer<MatchGroup> matchGroups, 
+            GridConfig gridConfig, 
+            SwapInfo? swap)
+        {
+            matchGroups.Clear();
+            groupsCache.Clear();
+
+            foreach (var pos in matchesCache)
+            {
+                int idx = gridConfig.GetIndex(pos);
+                var type = typeCache[idx].type;
+                if (type == TileType.None)
+                    continue;
+
+                int key = (int)type;
+
+                if (!groupsCache.TryGetValue(key, out var group))
+                {
+                    group = new MatchGroup
+                    {
+                        type = type,
+                        minPos = pos,
+                        maxPos = pos,
+                        bonusPos = pos
+                    };
+                }
+
+                group.count++;
+                group.minPos = math.min(group.minPos, pos);
+                group.maxPos = math.max(group.maxPos, pos);
+
+                if (swap.HasValue)
+                {
+                    if (pos.Equals(swap.Value.posB))
+                        group.bonusPos = swap.Value.posB;
+                    else if (pos.Equals(swap.Value.posA) && !group.bonusPos.Equals(swap.Value.posB))
+                        group.bonusPos = swap.Value.posA;
+                }
+                else
+                    group.bonusPos = (group.minPos + group.maxPos) / 2;
+
+                groupsCache[key] = group;
+            }
+
+            foreach (var kvp in groupsCache)
+                matchGroups.Add(kvp.Value);
+        }
+        
+        private void ProcessMatches(ref SystemState state, GridConfig gridConfig)
+        {
+            var timingConfig = SystemAPI.GetSingleton<TimingConfig>();
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
+            
+            MarkMatchedTiles(ref state, gridCells, gridConfig);
+
+            var gameState = SystemAPI.GetSingletonRW<GameState>();
+            gameState.ValueRW.phase = GamePhase.Clear;
+            gameState.ValueRW.phaseTimer = timingConfig.matchDelay;
+        }
+        
         private void MarkMatchedTiles(
-            EntityCommandBuffer ecb,
+            ref SystemState state,
             DynamicBuffer<GridCell> gridCells,
-            DynamicBuffer<MatchResult> matches,
             GridConfig gridConfig)
         {
-            foreach (var match in matches)
+            markTiles.Clear();
+            
+            foreach (var pos in matchesCache)
             {
-                int idx = gridConfig.GetIndex(match.pos);
+                int idx = gridConfig.GetIndex(pos);
                 var tile = gridCells[idx].tile;
                 if (tile != Entity.Null && !matchLookup.HasComponent(tile))
-                    ecb.AddComponent<MatchTag>(tile);
+                    markTiles.Add(tile);
             }
+
+            state.EntityManager.AddComponent<MatchTag>(markTiles.AsArray());
+        }
+
+        private void ProcessNoMatches(ref SystemState state, GridConfig gridConfig)
+        {
+            var timingConfig = SystemAPI.GetSingleton<TimingConfig>();
+            var gridCells = SystemAPI.GetSingletonBuffer<GridCell>();
+            
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+            
+            bool isReverting = TryRevertSwaps(ref state, ecb, gridCells, gridConfig, timingConfig);
+            if (isReverting)
+                SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
+            
+            var gameState = SystemAPI.GetSingletonRW<GameState>();
+            gameState.ValueRW.phase = isReverting ? GamePhase.Swap : GamePhase.Idle;
         }
 
         /// <summary>
         /// If no matches were found after a swap, revert the swap animation.
         /// </summary>
-        private bool HandleSwaps(
+        private bool TryRevertSwaps(
             ref SystemState state,
             EntityCommandBuffer ecb,
             DynamicBuffer<GridCell> gridCells,

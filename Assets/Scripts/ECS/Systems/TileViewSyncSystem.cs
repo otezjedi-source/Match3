@@ -42,30 +42,16 @@ namespace Match3.ECS.Systems
 
         public void OnUpdate(ref SystemState state)
         {
-            bool isMoving = !movingQuery.IsEmpty;
-            bool isDropping = !dropQuery.IsEmpty;
-            bool isDropped = !dropDoneQuery.IsEmpty;
+            var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
 
-            if (!isMoving && !isDropping && !isDropped)
-                return;
+            SyncMovingTiles(ref state);
+            SyncBonuses(ref state, refs);
             
-            if (isMoving)
-                SyncMovingTiles(ref state);
-
-            if (isDropping || isDropped)
-            {
-                var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
-                    .CreateCommandBuffer(state.WorldUnmanaged);
-
-                if (isDropping)
-                {
-                    var refs = SystemAPI.ManagedAPI.GetSingleton<ManagedReferences>();
-                    StartDropAnims(ref state, refs, ecb);
-                }
-                    
-                if (isDropped)
-                    CompleteDropAnims(ref state, ecb);
-            }
+            var ecb = SystemAPI.GetSingleton<EndSimulationEntityCommandBufferSystem.Singleton>()
+                .CreateCommandBuffer(state.WorldUnmanaged);
+            
+            StartDropAnims(ref state, refs, ecb);
+            CompleteDropAnims(ref state, ecb);
         }
 
         /// <summary>
@@ -79,6 +65,23 @@ namespace Match3.ECS.Systems
             {
                 if (viewData.view is not null)
                     viewData.view.transform.position = worldPos.ValueRO.pos;
+            }
+        }
+
+        private readonly void SyncBonuses(ref SystemState state, ManagedReferences refs)
+        {
+            if (refs.dataCache == null)
+                return;
+
+            foreach (var (bonusData, viewData) in
+                     SystemAPI.Query<RefRO<TileBonusData>, TileViewData>()
+                         .WithChangeFilter<TileBonusData>())
+            {
+                if (viewData.view is null)
+                    continue;
+
+                refs.dataCache.TryGet(bonusData.ValueRO.type, out var data);
+                viewData.view.SetBonus(data).Forget();
             }
         }
 

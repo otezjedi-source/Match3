@@ -7,12 +7,11 @@ namespace Match3.ECS.Systems
     /// Starts clear animations for matched tiles. Awards score.
     /// </summary>
     [UpdateInGroup(typeof(GameSystemGroup))]
-    [UpdateAfter(typeof(MatchSystem))]
+    [UpdateAfter(typeof(BonusActivateSystem))]
     public partial struct ClearSystem : ISystem
     {
         private EntityQuery clearQuery;
         private EntityQuery matchQuery;
-        private EntityQuery swapRequestQuery;
 
         public void OnCreate(ref SystemState state)
         {
@@ -24,7 +23,6 @@ namespace Match3.ECS.Systems
 
             clearQuery = SystemAPI.QueryBuilder().WithAll<ClearTag>().Build();
             matchQuery = SystemAPI.QueryBuilder().WithAll<MatchTag>().Build();
-            swapRequestQuery = SystemAPI.QueryBuilder().WithAll<SwapRequest>().Build();
         }
 
         public void OnUpdate(ref SystemState state)
@@ -86,9 +84,6 @@ namespace Match3.ECS.Systems
                 
                 SystemAPI.GetSingletonRW<GridDirtyFlag>().ValueRW.isDirty = true;
             }
-
-            // Cleanup swap request
-            ecb.DestroyEntity(swapRequestQuery, EntityQueryCaptureMode.AtPlayback);
         }
     }
 

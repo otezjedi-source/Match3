@@ -47,7 +47,7 @@ namespace Match3.ECS.Systems
             var entity = state.EntityManager.CreateSingleton<GridTag>();
             state.EntityManager.AddBuffer<GridCell>(entity);
             state.EntityManager.AddBuffer<GridTileTypeCache>(entity);
-            state.EntityManager.AddBuffer<MatchResult>(entity);
+            state.EntityManager.AddBuffer<MatchGroup>(entity);
             state.EntityManager.AddComponentData<GridDirtyFlag>(entity, new() { isDirty = true });
             state.EntityManager.AddComponentData<PossibleMovesCache>(entity, new() { isValid = false, hasMoves = true });
         }
