@@ -1,6 +1,6 @@
 using Newtonsoft.Json;
 
-namespace Match3.Save
+namespace Match3.Data
 {
     /// <summary>
     /// Serializable save data model. Add new fields as needed.

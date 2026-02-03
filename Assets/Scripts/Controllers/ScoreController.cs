@@ -1,6 +1,7 @@
 using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Match3.Data;
 using Match3.Save;
 using UniRx;
 using UnityEngine;

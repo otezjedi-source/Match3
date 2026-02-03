@@ -26,6 +26,17 @@ namespace Match3.ECS.Components
         Clear = 2,
         Fall = 3,
     }
+    
+    /// <summary>
+    /// Assigned bonus type. None indicates no bonus
+    /// </summary>
+    public enum BonusType : byte
+    {
+        None = 0,
+        LineHorizontal = 1, // Clears entire bonus row
+        LineVertical = 2,   // Clears entire bonus column
+        Bomb = 3,           // Clears 3x3 area around bonus
+    }
 
     /// <summary>
     /// Core tile data: type and grid position.
@@ -34,6 +45,15 @@ namespace Match3.ECS.Components
     {
         public TileType type;
         public int2 gridPos;
+    }
+    
+    /// <summary>
+    /// Marks a tile as having a bonus effect.
+    /// When tile with this component gets MatchTag, BonusActivationSystem triggers its effect.
+    /// </summary>
+    public struct TileBonusData : IComponentData
+    {
+        public BonusType type;
     }
 
     public struct TileStateData : IComponentData
@@ -59,6 +79,16 @@ namespace Match3.ECS.Components
         public float3 targetPos;
         public float duration;
         public float elapsed;
+    }
+    
+    /// <summary>
+    /// Request to assign bonus to a tile at specified position
+    /// Created by BonusDetectSystem, processed by BonusInitSystem
+    /// </summary>
+    public struct CreateBonusRequest : IComponentData
+    {
+        public int2 pos;
+        public BonusType type;
     }
 
     // Tags for tile state tracking

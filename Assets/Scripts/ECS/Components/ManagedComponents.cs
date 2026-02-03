@@ -1,5 +1,6 @@
 using Match3.Controllers;
 using Match3.Core;
+using Match3.Data;
 using Match3.Factories;
 using Match3.Game;
 using Unity.Entities;
@@ -25,6 +26,7 @@ namespace Match3.ECS.Components
         public ScoreController scoreController;
         public SoundController soundController;
         public TileTypeRegistry tileTypeRegistry;
+        public DataCache dataCache;
         public TileFactory tileFactory;
     }
 }

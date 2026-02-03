@@ -43,7 +43,7 @@ namespace Match3.ECS.Components
     /// <summary>
     /// Bonus element data. Baked from GameConfig.
     /// </summary>
-    public struct BonusConfigElement : IBufferElementData
+    public struct BonusConfig : IBufferElementData
     {
         public BonusType type; // Created bonus type.
         public int matchCount; // Matched tiles count needed to create the bonus.

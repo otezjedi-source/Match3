@@ -25,6 +25,11 @@ MonoBehaviour:
     m_ReadOnly: 0
     m_SerializedLabels: []
     FlaggedDuringContentUpdateRestriction: 0
+  - m_GUID: cf363a919a6cf4432a4b552e6b696998
+    m_Address: Assets/Sprites/Bonus_LineV.png
+    m_ReadOnly: 0
+    m_SerializedLabels: []
+    FlaggedDuringContentUpdateRestriction: 0
   m_ReadOnly: 0
   m_Settings: {fileID: 11400000, guid: f11449dbd8b37497e986179f190e5b21, type: 2}
   m_SchemaSet:

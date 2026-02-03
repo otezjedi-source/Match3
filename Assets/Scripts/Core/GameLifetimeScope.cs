@@ -1,5 +1,6 @@
 using System;
 using Match3.Controllers;
+using Match3.Data;
 using Match3.Factories;
 using Match3.Game;
 using Match3.UI;
@@ -38,6 +39,7 @@ namespace Match3.Core
             builder.Register<InputController>(Lifetime.Scoped);
             builder.Register<GameController>(Lifetime.Scoped);
             builder.Register<TileTypeRegistry>(Lifetime.Scoped);
+            builder.Register<DataCache>(Lifetime.Scoped);
 
             // UI components
             builder.RegisterComponent(gameUI).AsSelf();

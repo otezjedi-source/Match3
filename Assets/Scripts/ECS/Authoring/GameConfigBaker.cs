@@ -40,7 +40,7 @@ namespace Match3.ECS.Authoring
             });
 
             // Bonuses creation rules
-            var buffer = AddBuffer<BonusConfigElement>(entity);
+            var buffer = AddBuffer<BonusConfig>(entity);
             buffer.EnsureCapacity(authoring.gameConfig.bonusesData.Count);
             foreach (var bonus in authoring.gameConfig.bonusesData)
             {

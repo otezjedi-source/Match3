@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using Cysharp.Threading.Tasks;
+using Match3.Data;
 using Match3.ECS.Components;
 using Match3.Game;
 using Unity.Entities;
@@ -11,13 +12,13 @@ namespace Match3.Factories
 {
     public class TileViewInitializer : IDisposable
     {
-        private readonly TileDataCache dataCache;
+        private readonly DataCache dataCache;
         private readonly HashSet<UniTask> tasks = new();
 
         private CancellationTokenSource cts;
         private bool isDisposed;
 
-        public TileViewInitializer(TileDataCache dataCache)
+        public TileViewInitializer(DataCache dataCache)
         {
             this.dataCache = dataCache;
             cts = new();

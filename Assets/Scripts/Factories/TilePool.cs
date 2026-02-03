@@ -46,6 +46,7 @@ namespace Match3.Factories
             var view = Object.Instantiate(prefab, new(x, y), Quaternion.identity, parent);
             
             entityManager.AddComponentData<TileData>(entity, default);
+            entityManager.AddComponentData<TileBonusData>(entity, default);
             entityManager.AddComponentData<TileStateData>(entity, default);
             entityManager.AddComponentData<TileWorldPos>(entity, default);
             entityManager.AddComponentData<TileMove>(entity, default);

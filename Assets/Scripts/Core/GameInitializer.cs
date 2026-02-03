@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Match3.Controllers;
+using Match3.Data;
 using Match3.ECS.Components;
 using Match3.ECS.Systems;
 using Match3.Factories;
@@ -23,6 +24,7 @@ namespace Match3.Core
         [Inject] private readonly GameController gameController;
         [Inject] private readonly LoadingController loadingController;
         [Inject] private readonly TileTypeRegistry tileTypeRegistry;
+        [Inject] private readonly DataCache dataCache;
         [Inject] private readonly TileFactory tileFactory;
 
         private World world;
@@ -109,6 +111,7 @@ namespace Match3.Core
                 refs.scoreController = scoreController;
                 refs.soundController = soundController;
                 refs.tileTypeRegistry = tileTypeRegistry;
+                refs.dataCache = dataCache;
                 refs.tileFactory = tileFactory;
                 query.Dispose();
                 return;
@@ -121,6 +124,7 @@ namespace Match3.Core
                 scoreController = scoreController,
                 soundController = soundController,
                 tileTypeRegistry = tileTypeRegistry,
+                dataCache = dataCache,
                 tileFactory = tileFactory,
             });
             query.Dispose();

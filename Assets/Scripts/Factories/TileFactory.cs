@@ -2,6 +2,7 @@ using System;
 using System.Threading;
 using Cysharp.Threading.Tasks;
 using Match3.Core;
+using Match3.Data;
 using Match3.ECS.Components;
 using Match3.Game;
 using Unity.Entities;
@@ -20,6 +21,7 @@ namespace Match3.Factories
         [Inject] private readonly TileView tilePrefab;
         [Inject] private readonly Transform parent;
         [Inject] private readonly GameConfig gameConfig;
+        [Inject] private readonly DataCache dataCache;
         [Inject] private readonly EntityManager entityManager;
 
         private TilePool pool;
@@ -31,8 +33,7 @@ namespace Match3.Factories
         {
             if (isDisposed)
                 throw new ObjectDisposedException("[TileFactory] Trying to init disposed");
-
-            var dataCache = new TileDataCache(gameConfig);
+            
             pool = new(tilePrefab, parent, entityManager);
             initializer = new(dataCache);
         }
@@ -55,6 +56,7 @@ namespace Match3.Factories
             }
 
             entityManager.SetComponentData<TileData>(entity, new() { type = type, gridPos = new(x, y) });
+            entityManager.SetComponentData<TileBonusData>(entity, new() { type = BonusType.None });
             entityManager.SetComponentData<TileStateData>(entity, new() { state = TileState.Idle });
             entityManager.SetComponentData<TileWorldPos>(entity, new() { pos = new(x, y, 0) });
             entityManager.SetComponentEnabled<TileMove>(entity, false);

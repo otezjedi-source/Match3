@@ -21,6 +21,7 @@ namespace Match3.Game
     {
         [Header("References")]
         [SerializeField] private SpriteRenderer sprite;
+        [SerializeField] private SpriteRenderer bonus;
         [SerializeField] private SkeletonAnimation clearAnimation;
 
         [Header("Drop animation settings")]
@@ -33,6 +34,7 @@ namespace Match3.Game
 
         // Addressable handles for async asset loading
         private readonly AssetHandle<Sprite> spriteHandle = new();
+        private readonly AssetHandle<Sprite> bonusHandle = new();
         private readonly AssetHandle<SkeletonDataAsset> clearAnimHandle = new();
 
         private CancellationTokenSource cts;
@@ -111,6 +113,33 @@ namespace Match3.Game
                 Debug.LogError($"[TileView] Failed InitClearAnimAsync: {ex.Message}");
             }
         }
+
+        public async UniTaskVoid SetBonus(GameConfig.BonusData data)
+        {
+            if (bonus == null)
+                return;
+            
+            bonus.gameObject.SetActive(false);
+            
+            if (data == null)
+                return;
+
+            try
+            {
+                var result = await bonusHandle.LoadAsync(data.spriteRef);
+                if (isCleared || result == null)
+                    return;
+
+                bonus.sprite = result;
+                bonus.gameObject.SetActive(true);
+            }
+            catch (OperationCanceledException) { }
+            catch (Exception ex)
+            {
+                Debug.LogError($"[TileView] Failed SetBonus: {ex.Message}");
+            }
+            
+        }
         
         private void OnDestroy()
         {
@@ -151,6 +180,7 @@ namespace Match3.Game
             isCleared = true;
             ClearCts();
             spriteHandle.Release();
+            bonusHandle.Release();
             clearAnimHandle.Release();
             ResetTransforms();
             entity = Entity.Null;
