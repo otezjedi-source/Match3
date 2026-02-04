@@ -36,6 +36,12 @@ namespace Match3.ECS.Components
         LineHorizontal = 1, // Clears entire bonus row
         LineVertical = 2,   // Clears entire bonus column
         Bomb = 3,           // Clears 3x3 area around bonus
+        
+        // Combos
+        Cross = 101,            // LineHorizontal + LineVertical
+        BombHorizontal = 102,   // Bomb + LineHorizontal
+        BombVertical = 103,     // Bomb + LineVertical
+        BigBomb = 104,          // Bomb + Bomb
     }
 
     /// <summary>

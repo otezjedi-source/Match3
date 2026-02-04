@@ -49,7 +49,7 @@ namespace Match3.ECS.Systems
                 if (bonusData.ValueRO.type == BonusType.None)
                     continue;
 
-                RefreshAffectedPositions(bonusData.ValueRO.type, tileData.ValueRO.gridPos, gridConfig);
+                ApplyBonus(bonusData.ValueRO.type, tileData.ValueRO.gridPos, gridConfig);
                 bonusData.ValueRW.type = BonusType.None;
             }
 
@@ -57,31 +57,71 @@ namespace Match3.ECS.Systems
                 MarkTiles(ref state, gridCells, gridConfig);
         }
 
-        private void RefreshAffectedPositions(BonusType bonusType, int2 bonusPos, GridConfig gridConfig)
+        private void ApplyBonus(BonusType bonusType, int2 bonusPos, GridConfig gridConfig)
         {
             switch (bonusType)
             {
                 case BonusType.LineHorizontal:
-                    for (int x = 0; x < gridConfig.width; x++)
-                        affectedPositions.Add(new(x, bonusPos.y));
+                    AddRow(bonusPos.y, gridConfig);
                     break;
                 
                 case BonusType.LineVertical:
-                    for (int y = 0; y < gridConfig.height; y++)
-                        affectedPositions.Add(new(bonusPos.x, y));
+                    AddColumn(bonusPos.x, gridConfig);
                     break;
                 
                 case BonusType.Bomb:
-                    for (int dx = -1; dx <= 1; dx++)
+                    AddArea(bonusPos, 1, gridConfig);
+                    break;
+                
+                case BonusType.Cross:
+                    AddColumn(bonusPos.x, gridConfig);
+                    AddRow(bonusPos.y, gridConfig);
+                    break;
+                    
+                case BonusType.BombHorizontal:
+                    for (int dy = -1; dy <= 1; dy++)
                     {
-                        for (int dy = -1; dy <= 1; dy++)
-                        {
-                            var pos = bonusPos + new int2(dx, dy);
-                            if (gridConfig.IsValidPos(pos))
-                                affectedPositions.Add(pos);
-                        }
+                        if (bonusPos.y + dy >= 0 && bonusPos.y + dy < gridConfig.height)
+                            AddRow(bonusPos.y + dy, gridConfig);
                     }
                     break;
+                
+                case BonusType.BombVertical:
+                    for (int dx = -1; dx <= 1; dx++)
+                    {
+                        if (bonusPos.x + dx >= 0 && bonusPos.x + dx < gridConfig.width)
+                            AddColumn(bonusPos.x + dx, gridConfig);
+                    }
+                    break;
+                
+                case BonusType.BigBomb:
+                    AddArea(bonusPos, 2, gridConfig);
+                    break;
+            }
+        }
+        
+        private void AddRow(int y, GridConfig gridConfig)
+        {
+            for (int x = 0; x < gridConfig.width; x++)
+                affectedPositions.Add(new int2(x, y));
+        }
+
+        private void AddColumn(int x, GridConfig gridConfig)
+        {
+            for (int y = 0; y < gridConfig.height; y++)
+                affectedPositions.Add(new int2(x, y));
+        }
+
+        private void AddArea(int2 bonusPos, int radius, GridConfig gridConfig)
+        {
+            for (int dx = -radius; dx <= radius; dx++)
+            {
+                for (int dy = -radius; dy <= radius; dy++)
+                {
+                    var pos = bonusPos + new int2(dx, dy);
+                    if (gridConfig.IsValidPos(pos))
+                        affectedPositions.Add(pos);
+                }                
             }
         }
 

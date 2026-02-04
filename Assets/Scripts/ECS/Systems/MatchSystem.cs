@@ -26,6 +26,13 @@ namespace Match3.ECS.Systems
             public int2 posB;
         }
 
+        private struct ComboResult
+        {
+            public BonusType type;
+            public Entity tileA;
+            public Entity tileB;
+        }
+
         [BurstCompile]
         public void OnCreate(ref SystemState state)
         {
@@ -57,6 +64,9 @@ namespace Match3.ECS.Systems
         {
             var gameState = SystemAPI.GetSingletonRW<GameState>();
             if (gameState.ValueRO.phase != GamePhase.Match)
+                return;
+
+            if (TryBonusCombo(ref state))
                 return;
             
             matchLookup.Update(ref state);
@@ -292,7 +302,7 @@ namespace Match3.ECS.Systems
             }
             return isReverting;
         }
-        
+
         private void RevertSwap(
             ref SystemState state,
             ref SwapRequest request,
@@ -320,6 +330,83 @@ namespace Match3.ECS.Systems
             TileMoveHelper.Start(state.EntityManager, request.tileB, new(request.posB, 0), timingConfig.swapDuration, TileState.Swap);
 
             request.isReverting = true;
+        }
+        
+        /// <summary>
+        /// Checks if swapping two bonuses may create a combo.
+        /// </summary>
+        private bool TryBonusCombo(ref SystemState state)
+        {
+            var combo = GetCombo(ref state);
+            if (combo.type == BonusType.None)
+                return false;
+            
+            state.EntityManager.SetComponentData(combo.tileA, new TileBonusData { type = combo.type });
+            state.EntityManager.SetComponentData(combo.tileB, new TileBonusData { type = BonusType.None });
+
+            state.EntityManager.AddComponent<MatchTag>(combo.tileA);
+            state.EntityManager.AddComponent<MatchTag>(combo.tileB);
+            
+            var timingConfig = SystemAPI.GetSingleton<TimingConfig>();
+            var gameState = SystemAPI.GetSingletonRW<GameState>();
+            gameState.ValueRW.phase = GamePhase.Clear;
+            gameState.ValueRW.phaseTimer = timingConfig.matchDelay;
+            SystemAPI.GetSingletonBuffer<MatchGroup>().Clear();
+
+            return true;
+        }
+        
+        private ComboResult GetCombo(ref SystemState state)
+        {
+            foreach (var swap in SystemAPI.Query<RefRO<SwapRequest>>())
+            {
+                if (swap.ValueRO.isReverting)
+                    continue;
+                
+                var bonusA = state.EntityManager.GetComponentData<TileBonusData>(swap.ValueRO.tileA).type;
+                var bonusB = state.EntityManager.GetComponentData<TileBonusData>(swap.ValueRO.tileB).type;
+                
+                if (bonusA == BonusType.None || bonusB == BonusType.None)
+                    continue;
+            
+                bool aIsLine = bonusA == BonusType.LineHorizontal || bonusA == BonusType.LineVertical;
+                bool bIsLine = bonusB == BonusType.LineHorizontal || bonusB == BonusType.LineVertical;
+                if (aIsLine && bIsLine)
+                    return new()
+                    {
+                        type = BonusType.Cross, 
+                        tileA = swap.ValueRO.tileA, 
+                        tileB = swap.ValueRO.tileB
+                    };
+
+                if (bonusA == BonusType.LineHorizontal && bonusB == BonusType.Bomb ||
+                    bonusA == BonusType.Bomb && bonusB == BonusType.LineHorizontal)
+                    return new()
+                    {
+                        type = BonusType.BombHorizontal, 
+                        tileA = swap.ValueRO.tileA, 
+                        tileB = swap.ValueRO.tileB
+                    };
+
+                if (bonusA == BonusType.LineVertical && bonusB == BonusType.Bomb ||
+                    bonusA == BonusType.Bomb && bonusB == BonusType.LineVertical)
+                    return new()
+                    {
+                        type = BonusType.BombVertical, 
+                        tileA = swap.ValueRO.tileA, 
+                        tileB = swap.ValueRO.tileB
+                    };
+                
+                if (bonusA == BonusType.Bomb && bonusB == BonusType.Bomb)
+                    return new()
+                    {
+                        type = BonusType.BigBomb, 
+                        tileA = swap.ValueRO.tileA, 
+                        tileB = swap.ValueRO.tileB
+                    };
+            }
+
+            return new() { type = BonusType.None };
         }
     }
 }
