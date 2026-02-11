@@ -13,7 +13,7 @@ namespace Match3.Bubbles
         public Mesh bubbleMesh;
         
         [Header("Spawn")]
-        public int maxBubbles = 50;
+        [Range(0, 100)] public int maxBubbles = 50;
         public Vector2 spawnRangeX = new(-3f, 3f);
         public Vector2 spawnRangeY = new(-6f, 6f);
         public Vector2 sizeRange = new(0.3f, 0.8f);

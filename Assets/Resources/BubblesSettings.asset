@@ -14,7 +14,7 @@ MonoBehaviour:
   m_EditorClassIdentifier: Assembly-CSharp::Match3.Bubbles.BubbleSettings
   bubbleMaterial: {fileID: 2100000, guid: 1f7fb2424e949475bada04755ba77be3, type: 2}
   bubbleMesh: {fileID: 10210, guid: 0000000000000000e000000000000000, type: 0}
-  maxBubbles: 5
+  maxBubbles: 15
   spawnRangeX: {x: 0, y: 5}
   spawnRangeY: {x: -2, y: 0}
   sizeRange: {x: 0.6, y: 1.4}

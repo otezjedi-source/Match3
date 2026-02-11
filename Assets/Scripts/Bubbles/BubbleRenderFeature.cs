@@ -166,7 +166,7 @@ namespace Match3.Bubbles
                 var resourceData = frameData.Get<UniversalResourceData>();
 
                 using var builder = renderGraph.AddRasterRenderPass<PassData>("Bubble Draw", out var passData);
-                passData.material = settings.bubbleMaterial;
+                passData.material = bubble.MaterialInstance;
                 passData.mesh = settings.bubbleMesh;
                 passData.matrices = cachedMatrices;
                 passData.bubbleInfos = cachedBubbleInfos;

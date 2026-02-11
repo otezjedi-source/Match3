@@ -23,11 +23,13 @@ namespace Match3.Bubbles
         public BubbleSettings Settings => settings;
         public Matrix4x4[] Matrices { get; private set; }
         public Vector4[] BubbleInfos { get; private set; }
+        public Material MaterialInstance { get; private set; }
 
         public int Count => settings != null ? settings.maxBubbles : 0;
-        public bool IsReady => Matrices != null && bubbles != null && BubbleInfos != null;
-
+        public bool IsReady => bubbles != null && Matrices != null && BubbleInfos != null && MaterialInstance != null;
+        
         private BubbleData[] bubbles;
+        private int cachedMaxBubbles;
 
         public static BubbleRenderer Instance { get; private set; }
 
@@ -50,9 +52,19 @@ namespace Match3.Bubbles
                 return;
             }
 
+            Init();
+        }
+
+        private void Init()
+        {
+            cachedMaxBubbles = settings.maxBubbles;
+            
             bubbles = new BubbleData[settings.maxBubbles];
             Matrices = new Matrix4x4[settings.maxBubbles];
             BubbleInfos = new Vector4[settings.maxBubbles];
+            
+            ClearMaterialInstance();
+            MaterialInstance = new(settings.bubbleMaterial);
             
             for (int i = 0; i < Matrices.Length; i++)
                 Matrices[i] = Matrix4x4.identity;
@@ -61,6 +73,22 @@ namespace Match3.Bubbles
                 SpawnBubble(ref bubbles[i]);
 
             UpdateMatrices();
+        }
+
+        private void OnDestroy()
+        {
+            ClearMaterialInstance();
+        }
+        
+        private void ClearMaterialInstance()
+        {
+            if (MaterialInstance == null)
+                return;
+            
+            if (Application.isPlaying)
+                Destroy(MaterialInstance);
+            else
+                DestroyImmediate(MaterialInstance);
         }
 
         private void SpawnBubble(ref BubbleData bubble)
@@ -84,15 +112,20 @@ namespace Match3.Bubbles
             if (bubbles == null)
                 return;
 
+            if (settings.maxBubbles != cachedMaxBubbles)
+            {
+                Init();
+                return;
+            }
+
             float dt = Time.deltaTime;
             float time = Time.time;
 
             for (int i = 0; i < bubbles.Length; i++)
             {
                 ref var b = ref bubbles[i];
-
-                b.age += dt;
                 
+                b.age += dt;
                 if (b.age >= b.lifetime)
                 {
                     SpawnBubble(ref b);
@@ -127,7 +160,7 @@ namespace Match3.Bubbles
                 Matrices[i] = Matrix4x4.TRS( b.position, Quaternion.identity, Vector3.one * (b.size * popScale));
                 
                 // Pass data to shader: x = age, y = colorSeed, z = size variation
-                BubbleInfos[i] = new Vector4(normalizedAge, b.colorSeed, b.sizeVariation);
+                BubbleInfos[i] = new Vector4(normalizedAge, b.colorSeed, b.sizeVariation, 0);
             }
         }
     }
