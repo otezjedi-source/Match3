@@ -1,211 +1,225 @@
-# Match3 Game
+# Match3 — Puzzle Game on Unity ECS
 
-A classic match-3 puzzle game built with Unity using a hybrid ECS + MonoBehaviour architecture.
+A classic Match-3 puzzle game built with **Unity DOTS / ECS** architecture, featuring hybrid rendering, DI, reactive UI, and custom URP render features.
 
-## Architecture
+## Tech Stack
+
+| Layer | Technology |
+|---|---|
+| **Architecture** | Unity ECS (Entities 1.x), Hybrid ECS (data in ECS, visuals in MonoBehaviour) |
+| **DI** | VContainer (scoped lifetimes, constructor injection) |
+| **Reactive** | UniRx (reactive properties, UI binding) |
+| **Async** | UniTask (async/await, cancellation) |
+| **Rendering** | URP, Custom ScriptableRendererFeature + RenderGraph API, GPU Instancing |
+| **Shaders** | Shader Graph (procedural ocean floor effect with UV distortion, caustics, foam) |
+| **Animation** | Spine, DOTween (squash & stretch) |
+| **Assets** | Addressables (async loading, ref-counted handles) |
+| **Serialization** | Newtonsoft.Json |
+| **Performance** | Burst Compiler, IJobParallelFor, Object Pooling |
+
+## Architecture Overview
+
+The project follows a **hybrid ECS** approach: all game logic (matching, swapping, falling, scoring) runs in pure ECS systems, while visual representation (sprites, animations, UI) lives in MonoBehaviour land. A bridge layer (`TileViewSyncSystem`, `ScoreSyncSystem`, `SoundSyncSystem`) synchronizes the two worlds every frame.
 
 ```
-┌─────────────────────────────────────────────────────────┐
-│                      UI Layer                           │
-│         MonoBehaviour + UniRx (reactive binding)        │
-├─────────────────────────────────────────────────────────┤
-│                  Controllers Layer                      │
-│     POCO classes with DI (business logic bridge)        │
-├─────────────────────────────────────────────────────────┤
-│                    ECS Layer                            │
-│   Unity DOTS (game logic, grid state, matching)         │
-└─────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────┐
+│                   VContainer DI                 │
+│  BootLifetimeScope → StartLifetimeScope         │
+│                    → GameLifetimeScope          │
+├─────────────────────────────────────────────────┤
+│              ECS (Data + Logic)                 │
+│  Components: TileData, GridCell, GameState, ... │
+│  Systems:    Swap → Match → Clear → Fall → Fill │
+├─────────────────────────────────────────────────┤
+│           Sync Layer (ECS → MonoBehaviour)      │
+│  TileViewSyncSystem, ScoreSyncSystem,           │
+│  SoundSyncSystem                                │
+├─────────────────────────────────────────────────┤
+│            MonoBehaviour (Visuals + UI)         │
+│  TileView, GameUI, MenuStart, MenuGameOver,     │
+│  BubbleRenderer, LoadingScreen                  │
+│  Shader Graph: Ocean floor (distortion,         │
+│                caustics, foam)                  │
+└─────────────────────────────────────────────────┘
 ```
 
-### Why Hybrid?
+## Game Loop State Machine
 
-- **ECS** handles high-performance game logic (matching algorithms, grid operations, tile movement)
-- **MonoBehaviour** manages visuals and animations (easier DOTween/Spine integration)
-- **Controllers** bridge the two worlds, exposing reactive properties for UI
+```
+         ┌──────────────────────────────────────┐
+         ▼                                      │
+      [Idle] ──drag──▶ [Swap] ──done──▶ [Match] │
+         ▲                                 │    │
+         │                          match? │    │
+         │                         ┌──yes──┘    │
+         │                         ▼            │
+         │                      [Clear] ──▶  [Fall] ──▶ [Fill]─┐
+         │                                                     │
+         └──────────── no matches, idle ◀──────────────────────┘
+         │
+    no possible moves
+         ▼
+     [GameOver]
+```
+
+Each phase is an enum value in `GameState.phase`. Systems check the current phase and only execute when relevant, forming a clean implicit state machine without `switch` statements scattered across the codebase.
 
 ## Project Structure
 
 ```
 Assets/Scripts/
-├── Controllers/          # Business logic (input, audio, scoring, scenes)
-├── Core/                 # DI containers, configuration, initialization
-├── Data/                 # Data models (SaveData)
-├── ECS/
-│   ├── Authoring/       # Bakers for ECS conversion
-│   ├── Components/      # Pure data components
-│   └── Systems/         # Game logic systems
-├── Factories/           # Object creation (tile pooling)
-├── Game/                # Visual components (TileView)
-├── Interfaces/          # Contracts (ISaveController)
-├── UI/                  # Menu screens
-└── Utils/               # Helpers (AssetHandle, AdjustCamera)
+├── Bubbles/              # Custom URP render feature (GPU-instanced bubbles)
+│   ├── BubbleRenderFeature.cs    # ScriptableRendererFeature + RenderGraph pass
+│   ├── BubbleRenderer.cs         # MonoBehaviour managing bubble lifecycle
+│   └── BubbleSettings.cs         # ScriptableObject config (iridescence, pop, wobble)
+│
+├── Controllers/          # Application-level services
+│   ├── GameController.cs         # ECS ↔ app bridge (reactive game state)
+│   ├── InputController.cs        # New Input System → PlayerSwapRequest entities
+│   ├── ScoreController.cs        # Score + high score persistence (debounced save)
+│   ├── SoundController.cs        # One-shot SFX playback
+│   ├── LoadingController.cs      # Ref-counted loading operations
+│   ├── SceneLoader.cs            # Async scene loading with DI scope propagation
+│   └── PlayerPrefsSaveController.cs  # ISaveController implementation
+│
+├── Core/                 # Bootstrap and configuration
+│   ├── BootLifetimeScope.cs      # Root DI container (DontDestroyOnLoad)
+│   ├── GameLifetimeScope.cs      # Game scene DI (scoped, destroyed on unload)
+│   ├── StartLifetimeScope.cs     # Start menu scene DI
+│   ├── GameInitializer.cs        # Game scene entry point (IStartable + ITickable)
+│   ├── StartInitializer.cs       # Start scene entry point
+│   └── GameConfig.cs             # Central config SO with editor + runtime validation
+│
+├── Data/                 # Data layer
+│   ├── DataCache.cs              # Lookup cache for tile/bonus configs
+│   ├── TileTypeRegistry.cs       # Available tile types for random spawning
+│   └── SaveData.cs               # Serializable save model
+│
+├── ECS/                  # Entity Component System
+│   ├── Authoring/                # Baking (GameConfigAuthoring → ECS components)
+│   ├── Components/
+│   │   ├── TileComponents.cs         # TileData, TileMove, TileState, BonusType, tags
+│   │   ├── GridComponents.cs         # GridCell buffer, type cache, match groups
+│   │   ├── GameStateComponents.cs    # GamePhase, SwapRequest, ScoreEvent
+│   │   ├── ConfigComponents.cs       # GridConfig, MatchConfig, TimingConfig
+│   │   ├── ManagedComponents.cs      # TileViewData, ManagedReferences
+│   │   └── SoundComponents.cs        # PlaySoundRequest, SoundType
+│   └── Systems/
+│       ├── GridInitSystem.cs          # Grid creation + match-free generation
+│       ├── GridCacheSystem.cs         # Burst-compiled type cache rebuild
+│       ├── GridResetSystem.cs         # Cleanup for restart
+│       ├── SwapSystem.cs             # Input processing → tile swap
+│       ├── MatchSystem.cs            # Line-scan match detection + bonus combos
+│       ├── BonusDetectSystem.cs      # Match count → bonus type mapping
+│       ├── BonusActivateSystem.cs    # Bonus effect execution (line, bomb, cross)
+│       ├── BonusInitSystem.cs        # Bonus assignment to tiles
+│       ├── ClearSystem.cs            # Clear animation + score events
+│       ├── FallSystem.cs             # Gravity (column-wise drop)
+│       ├── FillSystem.cs             # New tile spawning above grid
+│       ├── TileMoveSystem.cs         # Burst parallel movement interpolation
+│       ├── TileViewSyncSystem.cs     # ECS position → Transform sync
+│       ├── ScoreSyncSystem.cs        # ScoreEvent → ScoreController
+│       ├── SoundSyncSystem.cs        # PlaySoundRequest → SoundController
+│       ├── PossibleMovesSystem.cs    # Game over detection (brute-force swap check)
+│       └── SystemGroups.cs           # GameInitSystemGroup, GameSystemGroup, GameSyncSystemGroup
+│
+├── Factories/            # Object creation and pooling
+│   ├── TileFactory.cs            # Create/return tiles (ECS entity + TileView)
+│   ├── TilePool.cs               # Queue-based entity pool
+│   └── TileViewInitializer.cs    # Async Addressables loading for tile visuals
+│
+├── Game/                 # Visual representation
+│   └── TileView.cs               # Sprite + Spine animation + squash & stretch
+│
+├── UI/                   # User interface
+│   ├── GameUI.cs                 # Menu state management
+│   ├── MenuStart.cs              # Start screen (play, high score reset, quit)
+│   ├── MenuGame.cs               # In-game HUD (score, back)
+│   ├── MenuGameOver.cs           # Game over (score, new high score, restart)
+│   └── LoadingScreen.cs          # CanvasGroup-based loading overlay
+│
+├── Utils/                # Utilities
+│   ├── AdjustCamera.cs           # Orthographic camera auto-fit
+│   └── AssetHandle.cs            # Addressables wrapper (load, cache, release)
+│
+└── Interfaces/
+    └── ISaveController.cs        # Save/load abstraction
 ```
 
-## Game Loop
+## Key Technical Decisions
 
-```
-[Idle] ←──────────────────────────────────┐
-   │                                       │
-   ▼ (player swaps tiles)                  │
-[Swap] → swap animation                    │
-   │                                       │
-   ▼                                       │
-[Match] → find matches                     │
-   │         │                             │
-   │         └─ no matches → revert swap ──┤
-   ▼                                       │
-[Clear] → destruction animation            │
-   │                                       │
-   ▼                                       │
-[Fall] → tiles fall down                   │
-   │                                       │
-   ▼                                       │
-[Fill] → spawn new tiles                   │
-   │                                       │
-   └─→ [Match] (check chain reactions)     │
-          │                                │
-          └─ no matches ───────────────────┘
-```
+### Hybrid ECS
 
-## Dependencies
+Game logic benefits from ECS data locality and Burst compilation: match detection, grid cache rebuild, and tile movement run as parallel jobs. Meanwhile, Unity's rendering, Spine animations, and UI toolkit remain in MonoBehaviour. The sync layer is intentionally thin — three small systems that fire events and copy positions.
 
-### Unity DOTS / Entities
-Entity Component System for data-oriented game logic.
+### Dependency Injection (VContainer)
 
-**Why:** Cache-friendly data layout and burst-compiled systems make grid operations fast. Matching algorithm benefits from contiguous memory access.
+Three-tier scope hierarchy mirrors the application lifecycle:
 
-**Used in:** `ECS/Systems/`, `ECS/Components/`
+- **BootLifetimeScope** — global singletons (audio, save, scene loader). Survives scene loads via `DontDestroyOnLoad`.
+- **StartLifetimeScope** — start menu. Disposed on scene unload.
+- **GameLifetimeScope** — game session services (input, grid, factory). Scoped lifetime ensures clean teardown.
 
----
+`LifetimeScope.EnqueueParent` propagates the parent scope during async scene loading.
 
-### VContainer
-Lightweight dependency injection container.
+### ECS ↔ Managed Bridge (ManagedReferences)
 
-**Why:** Cleaner than Zenject, better performance, smaller footprint. Enables loose coupling and easy testing.
+ECS systems are unmanaged and can't directly access MonoBehaviour services. A singleton `ManagedReferences` component holds references to `ScoreController`, `SoundController`, `TileFactory`, etc. — created once by `GameInitializer` and queried by sync systems. This keeps ECS logic pure while allowing controlled escape hatches to the managed world.
 
-**Used in:** `Core/*LifetimeScope.cs`
+### Structural Change Avoidance (IEnableableComponent)
 
-```csharp
-// Dependencies injected automatically
-public class GameController : IDisposable
-{
-    [Inject] private readonly EntityManager entityManager;
-    [Inject] private readonly ScoreController scoreController;
-}
-```
+`TileMove` implements `IEnableableComponent` — instead of adding/removing the component each time a tile starts or stops moving, the system toggles `SetComponentEnabled`. This avoids costly archetype changes on every swap, fall, and fill, which on a 5×9 grid with cascades would mean dozens of structural changes per frame.
 
----
+### Config Baking
 
-### UniRx
-Reactive Extensions for Unity.
+`GameConfig` (ScriptableObject) is baked via `GameConfigBaker` into separate ECS components — `GridConfig`, `MatchConfig`, `TimingConfig`, `BonusConfig` buffer. This lets systems query only the config slice they need, and the data lives alongside other ECS data in the same cache lines.
 
-**Why:** Declarative event handling, eliminates callback hell. Perfect for connecting ECS state to UI.
+### Bonus System
 
-**Used in:** Controllers, UI components
+Bonuses are data-driven via `BonusConfig` buffer baked from `GameConfig`. The pipeline:
 
-```csharp
-// UI updates automatically when score changes
-scoreController.Score
-    .Subscribe(score => scoreText.text = $"Score: {score}")
-    .AddTo(this);
-```
+1. **BonusDetectSystem** — maps match groups to bonus types based on count and shape (line vs non-line).
+2. **BonusInitSystem** — attaches `TileBonusData` component to the target tile.
+3. **BonusActivateSystem** — on clear, applies spatial effects (row/column/area clear).
+4. **MatchSystem.TryBonusCombo** — swapping two bonus tiles produces combo types (Cross, BombHorizontal, BigBomb, etc.).
 
----
+### Bubble Render Feature
 
-### UniTask
-Zero-allocation async/await.
+Decorative bubbles are rendered via a custom `ScriptableRendererFeature` using the RenderGraph API. Bubbles are GPU-instanced (`DrawMeshInstanced`) with per-instance data (age, color seed, size variation) passed via `MaterialPropertyBlock`-style `SetVectorArray`. This avoids creating GameObjects per bubble.
 
-**Why:** Proper async support without GC pressure. Essential for scene loading, asset loading, save operations.
+### Ocean Floor Shader (Shader Graph)
 
-**Used in:** Scene loading, save/load, asset loading
+The game background uses a Sprite Unlit Shader Graph that simulates an underwater view of a sandy floor. Three procedural layers are composited over the original sprite texture:
 
-```csharp
-await SceneManager.LoadSceneAsync(sceneName)
-    .ToUniTask(cancellationToken: ct);
-```
+1. **UV distortion** — Gradient Noise offsets the texture UV coordinates over time, creating a water refraction effect.
+2. **Caustics** — Animated Voronoi noise (with `Angle Offset` driven by `Time`) generates light patterns on the seabed. `Power` node sharpens the highlights.
+3. **Foam lines** — `Dot Product` projects UV onto a direction vector, fed through `Sine` → `Smoothstep` to produce moving foam strips. The same sine wave goes through `Remap` to darken wave troughs.
 
----
-
-### DOTween
-Animation engine for procedural tweening.
-
-**Why:** Smooth tile animations (swap, drop). More flexible than Unity's animation system for runtime-generated animations.
-
-**Used in:** `TileView.cs`
-
-```csharp
-DOTween.Sequence()
-    .Append(sprite.transform.DOScale(squashScale, squashDuration))
-    .Append(sprite.transform.DOScale(Vector3.one, recoverDuration));
-```
-
----
-
-### Spine Unity
-2D skeletal animation runtime.
-
-**Why:** Tile destruction effects. Spine provides smooth animations with smaller file sizes than sprite sheets.
-
-**Used in:** `TileView.cs` for clear animations
-
----
-
-### Addressables
-Async asset management.
-
-**Why:** On-demand loading reduces initial load time and memory. Tiles load sprites when needed.
-
-**Used in:** `AssetHandle.cs`, `TileView.cs`
-
----
-
-### Newtonsoft.Json
-JSON serialization.
-
-**Why:** More powerful than JsonUtility. Handles complex types and provides better error handling.
-
-**Used in:** `SaveData.cs`
-
----
-
-### Input System
-New Unity input handling.
-
-**Why:** Device-agnostic input, action-based design, better for multiple input methods.
-
-**Used in:** `InputController.cs`
-
----
-
-## Key Design Patterns
+All layers are combined additively over the shadow-modulated sprite and clamped with `Saturate`.
 
 ### Object Pooling
-`TileFactory` maintains a pool of tile entities. Tiles are recycled instead of destroyed to avoid GC during gameplay.
 
-### Reactive UI Binding
-UI subscribes to `ReactiveProperty<T>` values. No manual update calls needed.
+`TileFactory` + `TilePool` reuse both ECS entities and their associated `TileView` GameObjects. On clear, tiles are deactivated and returned to the queue. On spawn, they're reactivated and reinitialized. This eliminates GC pressure during gameplay.
 
-### Command Buffer Pattern
-ECS structural changes go through `EntityCommandBuffer` for thread safety.
+### Async Asset Loading
 
-### Phase-Based State Machine
-Explicit game phases (`Idle`, `Swap`, `Match`, `Clear`, `Fall`, `Fill`) ensure proper sequencing.
+Tile sprites and Spine skeleton data are loaded via Addressables. `AssetHandle<T>` wraps the loading with GUID-based caching, cancellation token support, and proper `Addressables.Release` on cleanup. `TileViewInitializer` batches all pending loads and exposes `WaitAllAsync` for the loading screen.
 
-## Configuration
+## Game Features
 
-`GameConfig` ScriptableObject:
+- **Grid generation** — random placement with constraint: no pre-existing matches, at least one valid move guaranteed.
+- **Drag-to-swap** — New Input System, configurable minimum drag distance.
+- **Match detection** — line-scan algorithm, supports 3+ matches in rows and columns.
+- **Bonuses** — horizontal/vertical line, bomb (3×3), and combo variants (cross, big bomb).
+- **Cascade** — after clearing, tiles fall, new tiles spawn, re-check for matches (chain reactions).
+- **Game over** — brute-force check of all possible swaps. Cached and invalidated only on grid changes.
+- **Score persistence** — debounced auto-save via `PlayerPrefs` (swappable via `ISaveController`).
+- **Squash & stretch** — DOTween sequence on tile landing for tactile feel.
+- **Spine clear animations** — per-tile-type destruction effects.
+- **Ocean floor background** — procedural Shader Graph effect (UV distortion, caustics, foam) applied over a sand sprite.
 
-| Setting | Description | Default |
-|---------|-------------|---------|
-| GridWidth | Grid width | 5 |
-| GridHeight | Grid height | 9 |
-| MatchCount | Tiles for match | 3 |
-| PointsPerTile | Score per tile | 10 |
-| SwapDuration | Swap animation | 0.3s |
-| FallDuration | Fall per cell | 0.3s |
+## How to Run
 
-## Building
-
-1. Open in Unity 2022.3+ LTS
-2. Resolve packages in Package Manager
-3. Build for target platform
+1. Open the project in Unity (2022.3+ with URP).
+2. Ensure packages are resolved: Entities, VContainer, UniTask, UniRx, DOTween, Spine-Unity, Addressables, Newtonsoft.Json.
+3. Open `BootScene` and press Play. The game loads `StartScene` automatically.
