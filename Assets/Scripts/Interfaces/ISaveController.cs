@@ -1,5 +1,5 @@
+using System.Threading;
 using Cysharp.Threading.Tasks;
-using Match3.Data;
 
 namespace Match3.Save
 {
@@ -9,8 +9,8 @@ namespace Match3.Save
     /// </summary>
     public interface ISaveController
     {
-        UniTask<SaveData> LoadAsync();
-        UniTask SaveAsync(SaveData data);
-        UniTask DeleteAsync();
+        UniTask<T> LoadAsync<T>(string key, T fallback = default, CancellationToken ct = default) where T : class;
+        UniTask<bool> SaveAsync<T>(string key, T data, CancellationToken ct = default) where T : class;
+        UniTask<bool> DeleteAsync(string key, CancellationToken ct = default);
     }
 }

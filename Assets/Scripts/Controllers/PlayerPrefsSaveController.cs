@@ -1,6 +1,9 @@
+using System;
+using System.Threading;
 using Cysharp.Threading.Tasks;
-using Match3.Data;
+using Match3.Interfaces;
 using UnityEngine;
+using VContainer;
 
 namespace Match3.Save
 {
@@ -11,39 +14,67 @@ namespace Match3.Save
     /// </summary>
     public class PlayerPrefsSaveController : ISaveController
     {
-        private const string SAVE_KEY = "SaveData";
+        [Inject] private readonly ISerializer serializer;
 
-        public async UniTask<SaveData> LoadAsync()
+        public async UniTask<T> LoadAsync<T>(string key, T fallback = default, CancellationToken ct = default) where T : class
         {
             await UniTask.Yield();
+            ct.ThrowIfCancellationRequested();
 
-            if (PlayerPrefs.HasKey(SAVE_KEY))
+            if (!PlayerPrefs.HasKey(key))
+                return fallback;
+
+            try
             {
-                var json = PlayerPrefs.GetString(SAVE_KEY);
-                return SaveData.FromJson(json);
+                var raw = PlayerPrefs.GetString(key);
+                var data = serializer.Deserialize<T>(raw);
+                return data ?? fallback;
             }
-
-            return new SaveData();
-        }
-
-        public async UniTask SaveAsync(SaveData data)
-        {
-            await UniTask.Yield();
-
-            var json = data.ToJson();
-            PlayerPrefs.SetString(SAVE_KEY, json);
-            PlayerPrefs.Save();
-        }
-
-        public async UniTask DeleteAsync()
-        {
-            await UniTask.Yield();
-
-            if (PlayerPrefs.HasKey(SAVE_KEY))
+            catch (OperationCanceledException)
             {
-                PlayerPrefs.DeleteKey(SAVE_KEY);
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[PlayerPrefsSaveController] Failed to load '{key}': {e.Message}");
+                return fallback;
+            }
+        }
+
+        public async UniTask<bool> SaveAsync<T>(string key, T data, CancellationToken ct = default) where T : class
+        {
+            await UniTask.Yield();
+            ct.ThrowIfCancellationRequested();
+
+            try
+            {
+                var raw = serializer.Serialize(data);
+                PlayerPrefs.SetString(key, raw);
                 PlayerPrefs.Save();
+                return true;
             }
+            catch (OperationCanceledException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                Debug.LogError($"[PlayerPrefsSaveController] Failed to save '{key}': {e.Message}");
+                return false;
+            }
+        }
+
+        public async UniTask<bool> DeleteAsync(string key, CancellationToken ct = default)
+        {
+            await UniTask.Yield();
+            ct.ThrowIfCancellationRequested();
+
+            if (!PlayerPrefs.HasKey(key))
+                return false;
+            
+            PlayerPrefs.DeleteKey(key);
+            PlayerPrefs.Save();
+            return true;
         }
     }
 }

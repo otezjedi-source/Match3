@@ -1,5 +1,7 @@
 using Cysharp.Threading.Tasks;
 using Match3.Controllers;
+using Match3.Data;
+using Match3.Interfaces;
 using Match3.Save;
 using Match3.UI;
 using UnityEngine;
@@ -47,6 +49,7 @@ namespace Match3.Core
                 .WithParameter(gameConfig);
 
             // Save system - interface binding allows swapping implementations
+            builder.Register<ISerializer, JsonSerializer>(Lifetime.Singleton);
             builder.Register<ISaveController, PlayerPrefsSaveController>(Lifetime.Singleton);
 
             // UI component (already in scene, just register for injection)

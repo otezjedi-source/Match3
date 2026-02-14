@@ -15,6 +15,8 @@ namespace Match3.Controllers
     /// </summary>
     public class ScoreController : IDisposable
     {
+        private const string SAVE_KEY = "SaveData";
+        
         [Inject] private readonly ISaveController saveController;
 
         public readonly ReactiveProperty<int> Score = new(0);
@@ -53,7 +55,7 @@ namespace Match3.Controllers
 
             try
             {
-                saveData = await saveController.LoadAsync();
+                saveData = await saveController.LoadAsync<SaveData>(SAVE_KEY);
             }
             catch (Exception ex)
             {
@@ -82,7 +84,7 @@ namespace Match3.Controllers
             if (saveData != null)
             {
                 saveData.HighScore = HighScore.Value;
-                saveController.SaveAsync(saveData).Forget();
+                saveController.SaveAsync(SAVE_KEY, saveData).Forget();
             }
 
             disposables?.Dispose();
@@ -168,7 +170,7 @@ namespace Match3.Controllers
                     return;
 
                 saveData.HighScore = HighScore.Value;
-                await saveController.SaveAsync(saveData);
+                await saveController.SaveAsync(SAVE_KEY, saveData);
             }
             catch (OperationCanceledException) { }
             catch (Exception ex)
